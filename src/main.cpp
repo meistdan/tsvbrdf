@@ -29,7 +29,7 @@ void spatialPrediction(const std::string & dir) {
 	// Source style channels.
 	int numStyleChannels = 20;
 	std::vector<cv::Mat> sourceChannels;
-#if 1
+#if 0
 	for (int f = 0; f < 4; ++f) {
 		for (int c = 0; c < 3; ++c)
 			sourceChannels.push_back(source.getKdNormalized(f, c));
@@ -68,7 +68,7 @@ void spatialPrediction(const std::string & dir) {
 	for (int f = 0; f < 4; ++f) {
 		for (int c = 0; c < 3; ++c)
 			styleWeights[c + f * 5] = 1.0f;
-		styleWeights[3 + f * 5] = 0.0f;
+		styleWeights[3 + f * 5] = 1.0f;
 		styleWeights[4 + f * 5] = 0.0f;
 	}
 #endif
@@ -137,11 +137,67 @@ void spatialPrediction(const std::string & dir) {
 	cv::split(targetStyles, targetChannels);
 
 	// Denormalize.
-	target.denormalize(source);
+	//target.denormalize(source);
 
 	// Export.
 	source.export("../out/reconstruct/" + dir);
 	target.export("../out/spatial/" + dir);
+
+	// Log.
+	std::ofstream out("../out/reconstruct/" + dir + "/out.log");
+
+	// Ranges.
+	double mn, mx;
+	cv::minMaxLoc(source.Kd[0].factors[0], &mn, &mx);
+	out << "Kdr A " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[0].factors[1], &mn, &mx);
+	out << "Kdr B " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[0].factors[2], &mn, &mx);
+	out << "Kdr C " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[0].factors[3], &mn, &mx);
+	out << "Kdr D " << mn << " " << mx << std::endl;
+	out << std::endl;
+
+	cv::minMaxLoc(source.Kd[1].factors[0], &mn, &mx);
+	out << "Kdg A " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[1].factors[1], &mn, &mx);
+	out << "Kdg B " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[1].factors[2], &mn, &mx);
+	out << "Kdg C " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[1].factors[3], &mn, &mx);
+	out << "Kdg D " << mn << " " << mx << std::endl;
+	out << std::endl;
+
+	cv::minMaxLoc(source.Kd[2].factors[0], &mn, &mx);
+	out << "Kdb A " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[2].factors[1], &mn, &mx);
+	out << "Kdb B " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[2].factors[2], &mn, &mx);
+	out << "Kdb C " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Kd[2].factors[3], &mn, &mx);
+	out << "Kdb D " << mn << " " << mx << std::endl;
+	out << std::endl;
+
+	cv::minMaxLoc(source.Ks.factors[0], &mn, &mx);
+	out << "Ks A " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Ks.factors[1], &mn, &mx);
+	out << "Ks B " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Ks.factors[2], &mn, &mx);
+	out << "Ks C " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.Ks.factors[3], &mn, &mx);
+	out << "Ks D " << mn << " " << mx << std::endl;
+	out << std::endl;
+
+	cv::minMaxLoc(source.sigma.factors[0], &mn, &mx);
+	out << "sigma A " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.sigma.factors[1], &mn, &mx);
+	out << "sigma B " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.sigma.factors[2], &mn, &mx);
+	out << "sigma C " << mn << " " << mx << std::endl;
+	cv::minMaxLoc(source.sigma.factors[3], &mn, &mx);
+	out << "sigma D " << mn << " " << mx << std::endl;
+	out << std::endl;
+	out << std::endl;
 
 }
 

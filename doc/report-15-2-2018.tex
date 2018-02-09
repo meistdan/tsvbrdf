@@ -36,9 +36,10 @@ unicode=true,
 \begin{document}
 
 \begin{center}
-\textsc{\LARGE Time-Varying Appearance}\\[0.4cm]
-\textsc{\Large Technical Report - February 2018}\\[0.4cm]
-\textsc{\large Toyota Research Lab}\\[0.4cm]
+\textsc{\LARGE Time-Varying Appearance}\\[0.3cm]
+\textsc{\Large Technical Report - February 2018}\\[0.3cm]
+\textsc{\large Toyota Research Lab}\\[0.2cm]
+\textsc{\large Czech Technical University in Prague}\\[0.2cm]
 \textsc{\normalsize Daniel Meister and Ji\v{r}i Bittner}\\[0.5cm]
 \end{center}
 
@@ -46,7 +47,7 @@ unicode=true,
 
 \section{Related Work}
 
-\paragraph{Weathering:} Traditionally, various phenomena have been studied individually weathering effects and proposed models based on physically inspired simulations: metallic patinas \cite{Dorsey1996a}, flow of water \cite{Dorsey1996b}, stone weathering \cite{Dorsey1999,Xue2011}, lichen growth \cite{Desbenoit2004}, peeling and cracking \cite{Paquette2002}, dust accumulation \cite{Hsu1995}, scratches \cite{Bosch2004}, stains \cite{Bosch2011}, and wet surfaces \cite{Nakamae1990,Jensen1999}. Chen et al.~\cite{Chen2005} proposed a general simulation based on tracing weathering particles similar to photon mapping. In last decade, data-driven models became popular. Lu et al.~\cite{Lu2006} proposed a data-driven parametric model of drying effect. Gu et. al~\cite{Gu2006} proposed a general non-linear factorization of spatial and temporal components of the phenomena modeling various phenomena. Similarly, Sun et al.~\cite{Sun2007} studied more complex time-varying phenomena such as drying of paints and dust accumulation; however, this approach is not spatial varying. Wang et al~\cite{Wang2006}, Xue et al.~\cite{Xue2008}, Bandeira and Walter~\cite{Bandeira2009}, and Bellini et al.~\cite{Bellini2016} proposed methods based on capturing data at a single time instant from which extract the effect using non-linear dimensionality reduction tools.
+\paragraph{Weathering:} Traditionally, various phenomena have been addressed individually proposing models based on physically inspired simulations: metallic patinas \cite{Dorsey1996a}, flow of water \cite{Dorsey1996b}, stone weathering \cite{Dorsey1999,Xue2011}, lichen growth \cite{Desbenoit2004}, peeling and cracking \cite{Paquette2002}, dust accumulation \cite{Hsu1995}, scratches \cite{Bosch2004}, stains \cite{Bosch2011}, and wet surfaces \cite{Nakamae1990,Jensen1999}. Chen et al.~\cite{Chen2005} proposed a general simulation based on tracing weathering particles similar to photon mapping. In last decade, data-driven models became popular. Lu et al.~\cite{Lu2006} proposed a data-driven parametric model of drying effect. Gu et. al~\cite{Gu2006} proposed a general non-linear factorization of spatial and temporal components of a general phenomena. Similarly, Sun et al.~\cite{Sun2007} studied more complex time-varying phenomena such as drying of paints and dust accumulation; however, this approach is not spatial varying. Wang et al~\cite{Wang2006}, Xue et al.~\cite{Xue2008}, Bandeira and Walter~\cite{Bandeira2009}, and Bellini et al.~\cite{Bellini2016} proposed methods based on capturing data at a single time instant from which extract the effect using non-linear dimensionality reduction tools.
 
 % \cite{Wong1997}, \cite{Georghiades2005}, \cite{Lu2007}
 
@@ -86,7 +87,7 @@ The goal of the example-based texture is an enlargement of the texture, i.e. syn
 \end{figure}
 
 \section{Conclusion and Future Work}
-We studied approaches addressing time-varying materials. We successfully reconstructed samples from the STAF database. We did initial experiments with the texture synthesis algorithm, see Figure~\ref{Fig:Granite}. We use the core of algorithm from the StyLit project~\cite{Fiser2016}. We plan to study issues mentioned above in detail to do TSV-BRDF synthesis in correct way. 
+We studied approaches addressing time-varying materials. We successfully reconstructed samples from the STAF database. We did initial experiments with the texture synthesis algorithm (see Figure~\ref{Fig:Granite}). We used the core of algorithm from the StyLit project~\cite{Fiser2016}. We plan to study issues mentioned above in detail to do TSV-BRDF synthesis in correct way. 
 
 \bibliographystyle{plain}
 \bibliography{reference}

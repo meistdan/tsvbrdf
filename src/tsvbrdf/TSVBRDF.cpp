@@ -165,39 +165,7 @@ cv::Mat TSVBRDF::getSigma(float t) {
 	return eval(sigma, t);
 }
 
-cv::Mat TSVBRDF::getKdNormalized(int f, int c) {
-	return normalize(Kd[c].factors[f]);
-}
-
-cv::Mat TSVBRDF::getKsNormalized(int f) {
-	return normalize(Ks.factors[f]);
-}
-
-cv::Mat TSVBRDF::getSigmaNormalized(int f) {
-	return normalize(sigma.factors[f]);
-}
-
 cv::Mat TSVBRDF::eval(Parameter & p, float t) {
 	cv::Mat tmp = p.phi.eval((t - p.factors[2]).mul(1.0f / p.factors[1]));
 	return p.factors[0].mul(tmp) + p.factors[3];
-}
-
-cv::Mat TSVBRDF::normalize(const cv::Mat & mat) {
-	double mn, mx;
-	cv::minMaxLoc(mat, &mn, &mx);
-	return (mat - mn) / (mx - mn);
-}
-
-void TSVBRDF::denormalize(const TSVBRDF & source) {
-	double mn, mx;
-	for (int f = 0; f < 4; ++f) {
-		for (int c = 0; c < 3; ++c) {
-			cv::minMaxLoc(source.Kd[c].factors[f], &mn, &mx);
-			Kd[c].factors[f] = Kd[c].factors[f] * (mx - mn) + mn;
-		}
-		cv::minMaxLoc(source.Ks.factors[f], &mn, &mx);
-		Ks.factors[f] = Ks.factors[f] * (mx - mn) + mn;
-		cv::minMaxLoc(source.sigma.factors[f], &mn, &mx);
-		sigma.factors[f] = sigma.factors[f] * (mx - mn) + mn;
-	}
 }

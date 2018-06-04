@@ -39,13 +39,7 @@ public:
 	cv::Mat getKs(float t);
 	cv::Mat getSigma(float t);
 
-	cv::Mat getKdNormalized(int f, int c);
-	cv::Mat getKsNormalized(int f);
-	cv::Mat getSigmaNormalized(int f);
-
 	cv::Mat eval(Parameter & p, float t);
-	cv::Mat normalize(const cv::Mat & mat);
-	void denormalize(const TSVBRDF & source);
 	
 };
 

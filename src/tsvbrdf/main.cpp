@@ -129,7 +129,6 @@ void spatialPrediction(const std::string & dir) {
 		for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.Kd[c].factors[f]);
 	for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.Ks.factors[f]);
 	for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.sigma.factors[f]);
-	
 	cv::Mat sourceStyles;
 	cv::merge(sourceChannels, sourceStyles);
 
@@ -155,6 +154,24 @@ void spatialPrediction(const std::string & dir) {
 	for (int i = 0; i < numGuideChannels; i++)
 		guideWeights[i] = 0.0f;
 
+	// Phi.
+	int phiDegree = EBSYNTH_PHI_DEGREE;
+	std::vector<float> phi;
+	for (int c = 0; c < 3; ++c) {
+		for (int i = 0; i <= phiDegree; i++)
+			if (i > source.Kd[c].phi.degree()) phi.push_back(0);
+			else phi.push_back(source.Kd[c].phi.coefs[source.Kd[c].phi.degree() - i]);
+	}
+	for (int i = 0; i <= phiDegree; i++) {
+		if (i > source.Ks.phi.degree()) phi.push_back(0);
+		else phi.push_back(source.Ks.phi.coefs[source.Ks.phi.degree() - i]);
+
+	}
+	for (int i = 0; i <= phiDegree; i++) {
+		if (i > source.sigma.phi.degree()) phi.push_back(0);
+		else phi.push_back(source.sigma.phi.coefs[source.sigma.phi.degree() - i]);
+	}
+
 	// Pyramid levels.
 	int patchSize = 5;
 	int numPyramidLevels = idealNumPyramidLevels(source.width, source.height, targetWidth, targetHeight, patchSize);
@@ -164,10 +181,12 @@ void spatialPrediction(const std::string & dir) {
 	for (int i = 0; i < numPyramidLevels; i++) {
 		numSearchVoteItersPerLevel[i] = 8;
 		numPatchMatchItersPerLevel[i] = 4;
-		stopThresholdPerLevel[i] = 0;
+		stopThresholdPerLevel[i] = 5;
 	}
 
-	// StyLit.
+	std::cout << "Start spatial" << std::endl << std::flush;
+
+	// EBSynth.
 	ebsynthRun(
 		EBSYNTH_BACKEND_CUDA,
 		numStyleChannels,
@@ -182,15 +201,19 @@ void spatialPrediction(const std::string & dir) {
 		nullptr,
 		styleWeights.data(),
 		guideWeights.data(),
-		5000.0f,
+		0.075f,
 		patchSize,
 		EBSYNTH_VOTEMODE_PLAIN,
 		numPyramidLevels,
 		numSearchVoteItersPerLevel.data(),
 		numPatchMatchItersPerLevel.data(),
 		stopThresholdPerLevel.data(),
+		phi.data(),
+		phiDegree,
 		targetStyles.data
 		);
+
+	std::cout << "End spatial" << std::endl << std::flush;
 
 	// Output.
 	TSVBRDF target(targetWidth, targetHeight, source.Kd[0].factors[0].type());
@@ -229,52 +252,70 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 	// Source.
 	TSVBRDF source(sourceDir);
 
+	// Guide image to be equalized.
+	cv::Mat guideImg = 0.2125f * source.getKd(t0, 0) + 0.7154f * source.getKd(t0, 1) + 0.0721f * source.getKd(t0, 2);
+	guideImg.convertTo(guideImg, CV_8U, 255.0f);
+	equalizeHist(guideImg, guideImg);
+	guideImg.convertTo(guideImg, CV_32F, 1.0f / 255.0f);
+
 	// Source guide channels.
-	int numGuideChannels = 3;
-	std::vector<cv::Mat> sourceGuideChannels;
-	sourceGuideChannels.push_back(0.2125f * source.getKd(t0, 0) + 0.7154f * source.getKd(t0, 1) + 0.0721f * source.getKd(t0, 2));
-	sourceGuideChannels.push_back(source.getKs(t0));
-	sourceGuideChannels.push_back(source.getSigma(t0));
-	cv::Mat sourceGuides;
-	cv::merge(sourceGuideChannels, sourceGuides);
+	int numGuideChannels = 1;
+	cv::Mat sourceGuides = 0.2125f * source.getKd(t0, 0) + 0.7154f * source.getKd(t0, 1) + 0.0721f * source.getKd(t0, 2);
+	sourceGuides.convertTo(sourceGuides, CV_8U, 255.0f);
+	equalizeHist(sourceGuides, sourceGuides);
+	sourceGuides.convertTo(sourceGuides, CV_32F, 1.0f / 255.0f);
 
 	// Source style channels.
 	int numStyleChannels = 20;
-	std::vector<cv::Mat> sourceStyleChannels;
-	for (int f = 0; f < 4; ++f) {
-		for (int c = 0; c < 3; ++c)
-			sourceStyleChannels.push_back(source.Kd[c].factors[f]);
-		sourceStyleChannels.push_back(source.Ks.factors[f]);
-		sourceStyleChannels.push_back(source.sigma.factors[f]);
-	}
+	std::vector<cv::Mat> sourceChannels;
+	for (int c = 0; c < 3; ++c)
+		for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.Kd[c].factors[f]);
+	for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.Ks.factors[f]);
+	for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.sigma.factors[f]);
 	cv::Mat sourceStyles;
-	cv::merge(sourceStyleChannels, sourceStyles);
+	cv::merge(sourceChannels, sourceStyles);
 
 	// Target.
 	TSVBRDF target(targetDir);
 
 	// Target guide channels.
-	std::vector<cv::Mat> targetGuideChannels;
-	targetGuideChannels.push_back(0.2125f * target.getKd(t0, 0) + 0.7154f * target.getKd(t0, 1) + 0.0721f * target.getKd(t0, 2));
-	targetGuideChannels.push_back(target.getKs(t0));
-	targetGuideChannels.push_back(target.getSigma(t0));
-	cv::Mat targetGuides;
-	cv::merge(targetGuideChannels, targetGuides);
+	cv::Mat targetGuides = 0.2125f * target.getKd(t0, 0) + 0.7154f * target.getKd(t0, 1) + 0.0721f * target.getKd(t0, 2);
+	targetGuides.convertTo(targetGuides, CV_8U, 255.0f);
+	equalizeHist(targetGuides, targetGuides);
+	targetGuides.convertTo(targetGuides, CV_32F, 1.0f / 255.0f);
 
 	// Target style channels => output.
 	cv::Mat targetStyles(target.height, target.width, sourceStyles.type());
 
 	// Style weights.
-	const float totalStyleWeight = 1.0f;
+	const float totalStyleWeight = 2.0f;
 	std::vector<float> styleWeights(numStyleChannels);
 	for (int i = 0; i < numStyleChannels; i++)
 		styleWeights[i] = totalStyleWeight / numStyleChannels;
 
 	// Guide weights.
-	const float totalGuideWeight = 2.0f;
+	const float totalGuideWeight = 1.0f;
 	std::vector<float> guideWeights(numGuideChannels);
 	for (int i = 0; i < numGuideChannels; i++)
 		guideWeights[i] = totalGuideWeight / numGuideChannels;
+
+	// Phi.
+	int phiDegree = EBSYNTH_PHI_DEGREE;
+	std::vector<float> phi;
+	for (int c = 0; c < 3; ++c) {
+		for (int i = 0; i <= phiDegree; i++)
+			if (i > source.Kd[c].phi.degree()) phi.push_back(0);
+			else phi.push_back(source.Kd[c].phi.coefs[source.Kd[c].phi.degree() - i]);
+	}
+	for (int i = 0; i <= phiDegree; i++) {
+		if (i > source.Ks.phi.degree()) phi.push_back(0);
+		else phi.push_back(source.Ks.phi.coefs[source.Ks.phi.degree() - i]);
+
+	}
+	for (int i = 0; i <= phiDegree; i++) {
+		if (i > source.sigma.phi.degree()) phi.push_back(0);
+		else phi.push_back(source.sigma.phi.coefs[source.sigma.phi.degree() - i]);
+	}
 
 	// Pyramid levels.
 	int patchSize = 5;
@@ -285,10 +326,12 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 	for (int i = 0; i < numPyramidLevels; i++) {
 		numSearchVoteItersPerLevel[i] = 8;
 		numPatchMatchItersPerLevel[i] = 4;
-		stopThresholdPerLevel[i] = 0;
+		stopThresholdPerLevel[i] = 5;
 	}
+	
+	std::cout << "Start temporal" << std::endl << std::flush;
 
-	// StyLit.
+	// EBSynth.
 	ebsynthRun(
 		EBSYNTH_BACKEND_CUDA,
 		numStyleChannels,
@@ -310,8 +353,12 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 		numSearchVoteItersPerLevel.data(),
 		numPatchMatchItersPerLevel.data(),
 		stopThresholdPerLevel.data(),
+		phi.data(),
+		phiDegree,
 		targetStyles.data
 		);
+
+	std::cout << "End temporal" << std::endl << std::flush;
 
 	// Output.
 	TSVBRDF reconstruct;
@@ -326,175 +373,47 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 
 	// Split channels.
 	std::vector<cv::Mat> reconstructChannels;
-	for (int f = 0; f < 4; ++f) {
-		for (int c = 0; c < 3; ++c)
-			reconstructChannels.push_back(reconstruct.Kd[c].factors[f]);
-		reconstructChannels.push_back(reconstruct.Ks.factors[f]);
-		reconstructChannels.push_back(reconstruct.sigma.factors[f]);
-	}
+	for (int c = 0; c < 3; ++c)
+		for (int f = 0; f < 4; ++f) reconstructChannels.push_back(reconstruct.Kd[c].factors[f]);
+	for (int f = 0; f < 4; ++f) reconstructChannels.push_back(reconstruct.Ks.factors[f]);
+	for (int f = 0; f < 4; ++f) reconstructChannels.push_back(reconstruct.sigma.factors[f]);
 	cv::split(targetStyles, reconstructChannels);
 
 	// Errors.
-	float KdrMSE = cv::sum((reconstruct.getKd(t0, 0) - target.getKd(t0, 0)).mul(reconstruct.getKd(t0, 0) - target.getKd(t0, 0)))[0];
-	float KdgMSE = cv::sum((reconstruct.getKd(t0, 1) - target.getKd(t0, 1)).mul(reconstruct.getKd(t0, 1) - target.getKd(t0, 1)))[0];
-	float KdbMSE = cv::sum((reconstruct.getKd(t0, 2) - target.getKd(t0, 2)).mul(reconstruct.getKd(t0, 2) - target.getKd(t0, 2)))[0];
-	float KsMSE = cv::sum((reconstruct.getKs(t0) - target.getKs(t0)).mul(reconstruct.getKs(t0) - target.getKs(t0)))[0];
-	float sigmaMSE = cv::sum((reconstruct.getSigma(t0) - target.getSigma(t0)).mul(reconstruct.getSigma(t0) - target.getSigma(t0)))[0];
+	//float KdrMSE = cv::sum((reconstruct.getKd(t0, 0) - target.getKd(t0, 0)).mul(reconstruct.getKd(t0, 0) - target.getKd(t0, 0)))[0];
+	//float KdgMSE = cv::sum((reconstruct.getKd(t0, 1) - target.getKd(t0, 1)).mul(reconstruct.getKd(t0, 1) - target.getKd(t0, 1)))[0];
+	//float KdbMSE = cv::sum((reconstruct.getKd(t0, 2) - target.getKd(t0, 2)).mul(reconstruct.getKd(t0, 2) - target.getKd(t0, 2)))[0];
+	//float KsMSE = cv::sum((reconstruct.getKs(t0) - target.getKs(t0)).mul(reconstruct.getKs(t0) - target.getKs(t0)))[0];
+	//float sigmaMSE = cv::sum((reconstruct.getSigma(t0) - target.getSigma(t0)).mul(reconstruct.getSigma(t0) - target.getSigma(t0)))[0];
 
-	// Log.
-	std::ofstream out("../out/temporal/" + sourceDir + "-" + targetDir + "/out.log");
+#if 0
+	// Adjust only offset.
+	for (int c = 0; c < 3; ++c)
+		reconstruct.Kd[c].factors[3] = target.getKd(t0, c) - reconstruct.getKd(t0, c) + reconstruct.Kd[c].factors[3];
+	reconstruct.Ks.factors[3] = target.getKs(t0) - reconstruct.getKs(t0) + reconstruct.Ks.factors[3];
+	reconstruct.sigma.factors[3] = target.getSigma(t0) - reconstruct.getSigma(t0) + reconstruct.sigma.factors[3];
+#else
+	// Original paper transfer.
+	for (int c = 0; c < 3; ++c) {
+		reconstruct.Kd[c].factors[0] = (target.getKd(t0, c).mul(1.0f / reconstruct.getKd(t0, c))).mul(reconstruct.Kd[c].factors[0]);
+		reconstruct.Kd[c].factors[3] = (target.getKd(t0, c).mul(1.0f / reconstruct.getKd(t0, c))).mul(reconstruct.Kd[c].factors[3]);
+	}
+	reconstruct.Ks.factors[0] = (target.getKs(t0).mul(1.0f / reconstruct.getKs(t0))).mul(reconstruct.Ks.factors[0]);
+	reconstruct.Ks.factors[3] = (target.getKs(t0).mul(1.0f / reconstruct.getKs(t0))).mul(reconstruct.Ks.factors[3]);
+	reconstruct.sigma.factors[0] = (target.getSigma(t0).mul(1.0f / reconstruct.getSigma(t0))).mul(reconstruct.sigma.factors[0]);
+	reconstruct.sigma.factors[3] = (target.getSigma(t0).mul(1.0f / reconstruct.getSigma(t0))).mul(reconstruct.sigma.factors[3]);
+#endif
 
-	// Ranges.
-	double mn, mx;
-	out << "source:" << std::endl;
-	cv::minMaxLoc(source.getKd(t0, 0), &mn, &mx);
-	out << "Kdr " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.getKd(t0, 1), &mn, &mx);
-	out << "Kdg " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.getKd(t0, 2), &mn, &mx);
-	out << "Kdb " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.getKs(t0), &mn, &mx);
-	out << "Ks " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.getSigma(t0), &mn, &mx);
-	out << "sigma " << mn << " " << mx << std::endl;
-	out << std::endl;
+	// Output dir.
+	const std::string reconstructDir = "../out/temporal/";
+	const std::string dir = sourceDir + "-" + targetDir;
 
-	cv::minMaxLoc(source.Kd[0].factors[0], &mn, &mx);
-	out << "Kdr A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[0].factors[1], &mn, &mx);
-	out << "Kdr B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[0].factors[2], &mn, &mx);
-	out << "Kdr C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[0].factors[3], &mn, &mx);
-	out << "Kdr D " << mn << " " << mx << std::endl;
-	out << std::endl;
-	
-	cv::minMaxLoc(source.Kd[1].factors[0], &mn, &mx);
-	out << "Kdg A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[1].factors[1], &mn, &mx);
-	out << "Kdg B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[1].factors[2], &mn, &mx);
-	out << "Kdg C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[1].factors[3], &mn, &mx);
-	out << "Kdg D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(source.Kd[2].factors[0], &mn, &mx);
-	out << "Kdb A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[2].factors[1], &mn, &mx);
-	out << "Kdb B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[2].factors[2], &mn, &mx);
-	out << "Kdb C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Kd[2].factors[3], &mn, &mx);
-	out << "Kdb D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(source.Ks.factors[0], &mn, &mx);
-	out << "Ks A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Ks.factors[1], &mn, &mx);
-	out << "Ks B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Ks.factors[2], &mn, &mx);
-	out << "Ks C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.Ks.factors[3], &mn, &mx);
-	out << "Ks D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(source.sigma.factors[0], &mn, &mx);
-	out << "sigma A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.sigma.factors[1], &mn, &mx);
-	out << "sigma B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.sigma.factors[2], &mn, &mx);
-	out << "sigma C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(source.sigma.factors[3], &mn, &mx);
-	out << "sigma D " << mn << " " << mx << std::endl;
-	out << std::endl; 
-	out << std::endl;
-
-	out << "target:" << std::endl;
-	cv::minMaxLoc(target.getKd(t0, 0), &mn, &mx);
-	out << "Kdr " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.getKd(t0, 1), &mn, &mx);
-	out << "Kdg " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.getKd(t0, 2), &mn, &mx);
-	out << "Kdb " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.getKs(t0), &mn, &mx);
-	out << "Ks " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.getSigma(t0), &mn, &mx);
-	out << "sigma " << mn << " " << mx << std::endl;
-
-	cv::minMaxLoc(target.Kd[0].factors[0], &mn, &mx);
-	out << "Kdr A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[0].factors[1], &mn, &mx);
-	out << "Kdr B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[0].factors[2], &mn, &mx);
-	out << "Kdr C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[0].factors[3], &mn, &mx);
-	out << "Kdr D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(target.Kd[1].factors[0], &mn, &mx);
-	out << "Kdg A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[1].factors[1], &mn, &mx);
-	out << "Kdg B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[1].factors[2], &mn, &mx);
-	out << "Kdg C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[1].factors[3], &mn, &mx);
-	out << "Kdg D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(target.Kd[2].factors[0], &mn, &mx);
-	out << "Kdb A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[2].factors[1], &mn, &mx);
-	out << "Kdb B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[2].factors[2], &mn, &mx);
-	out << "Kdb C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Kd[2].factors[3], &mn, &mx);
-	out << "Kdb D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(target.Ks.factors[0], &mn, &mx);
-	out << "Ks A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Ks.factors[1], &mn, &mx);
-	out << "Ks B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Ks.factors[2], &mn, &mx);
-	out << "Ks C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.Ks.factors[3], &mn, &mx);
-	out << "Ks D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(target.sigma.factors[0], &mn, &mx);
-	out << "sigma A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.sigma.factors[1], &mn, &mx);
-	out << "sigma B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.sigma.factors[2], &mn, &mx);
-	out << "sigma C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(target.sigma.factors[3], &mn, &mx);
-	out << "sigma D " << mn << " " << mx << std::endl;
-	out << std::endl;
-	out << std::endl;
-
-	out.close();
-
-//#if 1
-//	// Adjust only offset.
-//	for (int c = 0; c < 3; ++c)
-//		reconstruct.Kd[c].factors[3] = target.getKd(t0, c) - reconstruct.getKd(t0, c) + reconstruct.Kd[c].factors[3];
-//	reconstruct.Ks.factors[3] = target.getKs(t0) - reconstruct.getKs(t0) + reconstruct.Ks.factors[3];
-//	reconstruct.sigma.factors[3] = target.getSigma(t0) - reconstruct.getSigma(t0) + reconstruct.sigma.factors[3];
-//#else
-//	// Original paper transfer.
-//	for (int c = 0; c < 3; ++c) {
-//		reconstruct.Kd[c].factors[0] = (target.getKd(t0, c).mul(1.0f / reconstruct.getKd(t0, c))).mul(reconstruct.Kd[c].factors[0]);
-//		reconstruct.Kd[c].factors[3] = (target.getKd(t0, c).mul(1.0f / reconstruct.getKd(t0, c))).mul(reconstruct.Kd[c].factors[3]);
-//	}
-//	reconstruct.Ks.factors[0] = (target.getKs(t0).mul(1.0f / reconstruct.getKs(t0))).mul(reconstruct.Ks.factors[0]);
-//	reconstruct.Ks.factors[3] = (target.getKs(t0).mul(1.0f / reconstruct.getKs(t0))).mul(reconstruct.Ks.factors[3]);
-//	reconstruct.sigma.factors[0] = (target.getSigma(t0).mul(1.0f / reconstruct.getSigma(t0))).mul(reconstruct.sigma.factors[0]);
-//	reconstruct.sigma.factors[3] = (target.getSigma(t0).mul(1.0f / reconstruct.getSigma(t0))).mul(reconstruct.sigma.factors[3]);
-//#endif
+	// Create dirs.
+	CreateDirectory(reconstructDir.c_str(), nullptr);
+	CreateDirectory((reconstructDir + dir).c_str(), nullptr);
 
 	// Export.
-	reconstruct.export("../out/temporal/" + sourceDir + "-" + targetDir);
+	reconstruct.export(reconstructDir + dir);
 
 }
 

@@ -6,11 +6,11 @@
 #define EBSYNTH_H
 
 #ifndef EBSYNTH_API
-  #ifdef WIN32
-    #define EBSYNTH_API __declspec(dllimport)
-  #else
-    #define EBSYNTH_API
-  #endif
+#ifdef WIN32
+#define EBSYNTH_API __declspec(dllimport)
+#else
+#define EBSYNTH_API
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -21,48 +21,53 @@ extern "C" {
 
 #define EBSYNTH_NUM_STYLE_CHANNELS  20
 #define EBSYNTH_MAX_GUIDE_CHANNELS  24
+#define EBSYNTH_PHI_DEGREE 6
 
 #define EBSYNTH_VOTEMODE_PLAIN      0x0001         // weight = 1
 #define EBSYNTH_VOTEMODE_WEIGHTED   0x0002         // weight = 1/(1+error)
 
-EBSYNTH_API
-int ebsynthBackendAvailable(int ebsynthBackend);   // returns non-zero if the specified backend is available
+	EBSYNTH_API
+	int ebsynthBackendAvailable(int ebsynthBackend);   // returns non-zero if the specified backend is available
 
-EBSYNTH_API
-void ebsynthRun(int    ebsynthBackend,             // use BACKEND_CUDA for maximum speed
+	EBSYNTH_API
+	void ebsynthRun(int    ebsynthBackend,             // use BACKEND_CUDA for maximum speed
 
-                int    numStyleChannels,
-                int    numGuideChannels,
+		int    numStyleChannels,
+		int    numGuideChannels,
 
-                int    sourceWidth,
-                int    sourceHeight,
-                void*  sourceStyleData,            // (width * height * numStyleChannels) floats, scan-line order
-                void*  sourceGuideData,            // (width * height * numGuideChannels) floats, scan-line order
+		int    sourceWidth,
+		int    sourceHeight,
+		void*  sourceStyleData,            // (width * height * numStyleChannels) floats, scan-line order
+		void*  sourceGuideData,            // (width * height * numGuideChannels) floats, scan-line order
 
-                int    targetWidth,
-                int    targetHeight,
-                void*  targetGuideData,            // (width * height * numGuideChannels) floats, scan-line order
-                void*  targetModulationData,       // (width * height * numGuideChannels) floats, scan-line order; pass NULL to switch off the modulation
+		int    targetWidth,
+		int    targetHeight,
+		void*  targetGuideData,            // (width * height * numGuideChannels) floats, scan-line order
+		void*  targetModulationData,       // (width * height * numGuideChannels) floats, scan-line order; pass NULL to switch off the modulation
 
-                float* styleWeights,               // (numStyleChannels) floats
-                float* guideWeights,               // (numGuideChannels) floats
+		float* styleWeights,               // (numStyleChannels) floats
+		float* guideWeights,               // (numGuideChannels) floats
 
-                                                   // guideError(txy,sxy,ch) = guideWeights[ch] * (targetModulation[txy][ch]/255) * (targetGuide[txy][ch]-sourceGuide[sxy][ch])^2
+											// guideError(txy,sxy,ch) = guideWeights[ch] * (targetModulation[txy][ch]/255) * (targetGuide[txy][ch]-sourceGuide[sxy][ch])^2
 
-                float  uniformityWeight,           // reasonable values are between 500-15000, 3500 is a good default
+		float  uniformityWeight,           // reasonable values are between 500-15000, 3500 is a good default
 
-                int    patchSize,                  // odd sizes only, use 5 for 5x5 patch, 7 for 7x7, etc.
-                int    voteMode,                   // use VOTEMODE_WEIGHTED for sharper result
+		int    patchSize,                  // odd sizes only, use 5 for 5x5 patch, 7 for 7x7, etc.
+		int    voteMode,                   // use VOTEMODE_WEIGHTED for sharper result
 
-                int    numPyramidLevels,
+		int    numPyramidLevels,
 
-                int*   numSearchVoteItersPerLevel, // how many search/vote iters to perform at each level (array of ints, coarse first, fine last)
-                int*   numPatchMatchItersPerLevel, // how many Patch-Match iters to perform at each level (array of ints, coarse first, fine last)
+		int*   numSearchVoteItersPerLevel, // how many search/vote iters to perform at each level (array of ints, coarse first, fine last)
+		int*   numPatchMatchItersPerLevel, // how many Patch-Match iters to perform at each level (array of ints, coarse first, fine last)
 
-                int*   stopThresholdPerLevel,      // stop improving pixel when its change since last iteration falls under this threshold
+		int*   stopThresholdPerLevel,      // stop improving pixel when its change since last iteration falls under this threshold
 
-                void*  outputData                  // (width * height * numStyleChannels) bytes, scan-line order
-                );
+		float* phi,				   // source phi polynomial of staf model
+
+		int	   phiDegree,			   // degree of source phi polynomial
+
+		void*  outputData                  // (width * height * numStyleChannels) bytes, scan-line order
+		);
 
 #ifdef __cplusplus
 }

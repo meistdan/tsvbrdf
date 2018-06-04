@@ -12,11 +12,9 @@
 
 class Polynom {
 
-private:
+public:
 
 	std::vector<float> coefs;
-
-public:
 
 	int degree(void) { return coefs.size() - 1; }
 	cv::Mat eval(const cv::Mat & t);

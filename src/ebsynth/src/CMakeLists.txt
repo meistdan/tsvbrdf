@@ -1,5 +1,10 @@
 # Find CUDA.
-find_package(CUDA QUIET REQUIRED)
+find_package(CUDA REQUIRED)
+
+# Set CUDA debug info.
+#set(CUDA_VERBOSE_BUILD ON)
+#set(CUDA_NVCC_FLAGS_DEBUG "-g -G -G0")
+#set(CUDA_NVCC_FLAGS_RELEASE "-g -G -G0")
 
 set(SRC
 cudacheck.h
@@ -47,4 +52,6 @@ if (WIN32)
 	set(EBSYNTH_API __declspec\(dllexport\))
 	add_definitions(-DEBSYNTH_API=${EBSYNTH_API})
 endif()
+
+
 	

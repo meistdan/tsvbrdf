@@ -14,11 +14,12 @@ TSVBRDF::TSVBRDF(int width, int height, int type) {
 	resize(width, height, type);
 }
 
-TSVBRDF::TSVBRDF(const std::string & dir) {
-	import(dir);
+TSVBRDF::TSVBRDF(const std::string & filepath) {
+	load(filepath);
 }
 
-void TSVBRDF::import(const std::string & dir) {
+#if 0
+void TSVBRDF::load(const std::string & dir) {
 	
 	// Data path.
 	const std::string path = "../data/" + dir + "/SIM/" + dir + "-staf-";
@@ -36,7 +37,7 @@ void TSVBRDF::import(const std::string & dir) {
 		cv::Rect cropRect(BORDER, BORDER, img.size().width - 2 * BORDER, img.size().height - 2 * BORDER);
 		img = img(cropRect).clone();
 		for (int c = 0; c < 3; ++c)
-			cv::extractChannel(img, Kd[c].factors[f], 2 - c);
+			cv::extractChannel(img, Kd[c].factors[f], c);
 	}
 
 	// Ks.
@@ -105,11 +106,103 @@ void TSVBRDF::import(const std::string & dir) {
 	}
 
 }
+#else
+void TSVBRDF::load(const std::string & filepath) {
 
-void TSVBRDF::export(const std::string & path, float frameRate) {
+	// Images.
+	cv::Mat img;
+	const char factorChars[] = { 'A', 'B', 'C', 'D' };
+
+	// Kd.
+	for (int f = 0; f < 4; ++f) {
+		img = cv::imread(filepath + "/Kd-" + factorChars[f] + ".exr", CV_LOAD_IMAGE_UNCHANGED);
+		for (int c = 0; c < 3; ++c)
+			cv::extractChannel(img, Kd[c].factors[f], c);
+	}
+
+	// Ks.
+	for (int f = 0; f < 4; ++f)
+		Ks.factors[f] = cv::imread(filepath + "/Ks-" + factorChars[f] + ".exr", CV_LOAD_IMAGE_UNCHANGED);
+
+	// Sigma.
+	for (int f = 0; f < 4; ++f) {
+		sigma.factors[f] = cv::imread(filepath + "/Sigma-" + factorChars[f] + ".exr", CV_LOAD_IMAGE_UNCHANGED);
+	}
+
+	// Resolution.
+	width = img.size().width;
+	height = img.size().height;
+
+	// Phi.
+	float coef;
+	std::string line, value;
+	std::ifstream file(filepath + "/phi.txt");
+
+	// Kd.
+	for (int c = 0; c < 3; ++c) {
+		getline(file, line);
+		std::istringstream ss(line);
+		for (int i = 0; i <= Polynom::DEGREE; ++i) {
+			ss >> coef;
+			Kd[c].phi.coefs[i] = coef;
+		}
+	}
+
+	// Ks.
+	{
+		getline(file, line);
+		std::istringstream ss(line);
+		for (int i = 0; i <= Polynom::DEGREE; ++i) {
+			ss >> coef;
+			Ks.phi.coefs[i] = coef;
+		}
+	}
+
+	// Sigma.
+	{
+		getline(file, line);
+		std::istringstream ss(line);
+		for (int i = 0; i <= Polynom::DEGREE; ++i) {
+			ss >> coef;
+			sigma.phi.coefs[i] = coef;
+		}
+	}
+
+	file.close();
+
+}
+#endif
+
+void TSVBRDF::save(const std::string & filepath) {
+	const char factorChars[] = { 'A', 'B', 'C', 'D' };
+	for (int i = 0; i < 4; ++i) {
+		std::vector<cv::Mat> KdChannels;
+		for (int c = 0; c < 3; ++c)
+			KdChannels.push_back(Kd[c].factors[i]);
+		cv::Mat Kds;
+		cv::merge(KdChannels, Kds);
+		imwrite(filepath + "/Kd-" + factorChars[i] + ".exr", Kds);
+		imwrite(filepath + "/Ks-" + factorChars[i] + ".exr", Ks.factors[i]);
+		imwrite(filepath + "/Sigma-" + factorChars[i] + ".exr", sigma.factors[i]);
+	}
+	std::ofstream out(filepath + "/phi.txt");
+	for (int c = 0; c < 3; ++c) {
+		for (int i = 0; i <= Polynom::DEGREE; ++i)
+			out << Kd[c].phi.coefs[i] << " ";
+		out << std::endl;
+	}
+	for (int i = 0; i <= Polynom::DEGREE; ++i)
+		out << Ks.phi.coefs[i] << " ";
+	out << std::endl;
+	for (int i = 0; i <= Polynom::DEGREE; ++i)
+		out << sigma.phi.coefs[i] << " ";
+	out << std::endl;
+	out.close();
+}
+
+void TSVBRDF::exportFrames(const std::string & filepath, float frameRate) {
 	std::vector<cv::Mat> imgs(3);
 	cv::Mat img;
-	cv::Mat img2(height, width, CV_32FC3);
 	cv::Mat imgKd(height, width, Kd[0].factors[0].type());
 	cv::Mat imgKs(height, width, Ks.factors[0].type());
 	cv::Mat imgSigma(height, width, sigma.factors[0].type());
@@ -122,7 +215,6 @@ void TSVBRDF::export(const std::string & path, float frameRate) {
 	float dotEN = N.dot(E);
 	float dotHN = N.dot(H);
 	int f = 0;
-
 	for (float t = 0.0f; t <= 1.0f; t += frameRate) {
 		imgKs = getKs(t);
 		imgKs = imgKs / (4.0f * dotNL * dotEN);
@@ -132,12 +224,10 @@ void TSVBRDF::export(const std::string & path, float frameRate) {
 		cv::exp(imgSigma, imgSigma);
 		for (int c = 0; c < 3; ++c) {
 			imgKd = getKd(t, c);
-			imgs[2 - c] = (imgKd + imgKs.mul(imgSigma)) * dotNL;
-			//imgs[2 - c] = imgKd;
+			imgs[c] = (imgKd + imgKs.mul(imgSigma)) * dotNL;
 		}
 		cv::merge(imgs, img);
-		imwrite(path + "/tvBTF" + std::to_string(f++) + ".jpg", img * 255.0f);
-		//imwrite(path + "/tvBTF" + std::to_string(f++) + ".exr", img);
+		imwrite(filepath + "/" + std::to_string(f++) + ".jpg", img * 255.0f);
 	}
 }
 

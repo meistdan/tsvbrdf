@@ -28,10 +28,12 @@ public:
 	
 	TSVBRDF(void);
 	TSVBRDF(int width, int height, int type);
-	TSVBRDF(const std::string & dir);
+	TSVBRDF(const std::string & filepath);
 
-	void import(const std::string & dir);
-	void export(const std::string & path, float frameRate = 0.02f);
+	void load(const std::string & filepath);
+	void save(const std::string & filepath);
+
+	void exportFrames(const std::string & filepath, float frameRate = 0.02f);
 
 	void resize(int width, int height, int type);
 

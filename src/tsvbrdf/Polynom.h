@@ -11,15 +11,12 @@
 #include "Globals.h"
 
 class Polynom {
-
 public:
 
-	std::vector<float> coefs;
+	static const int DEGREE = 6;
+	float coefs[DEGREE + 1];
 
-	int degree(void) { return coefs.size() - 1; }
 	cv::Mat eval(const cv::Mat & t);
-
-	friend class TSVBRDF;
 
 };
 

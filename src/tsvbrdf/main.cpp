@@ -1,5 +1,4 @@
 #include "TSVBRDF.h"
-#include <windows.h>
 
 int pyramidLevelSize(int sizeBase, int level) {
 	return int(float(sizeBase) * pow(2.0f, -float(level)));
@@ -17,105 +16,10 @@ int idealNumPyramidLevels(int sourceWidth, int sourceHeight, int targetWidth, in
 	return numLevels;
 }
 
-void dataStatistics(const std::string & dir) {
-	
-	// Data.
-	TSVBRDF material(dir);
-
-	// Output dir.
-	const std::string outputDir = "../out/statistics/";
-	CreateDirectory(outputDir.c_str(), nullptr);
-
-	// Log.
-	std::ofstream out(outputDir + dir + ".log");
-
-	// Extremes.
-	double KdrMin = FLT_MAX, KdgMin = FLT_MAX, KdbMin = FLT_MAX, KsMin = FLT_MAX, sigmaMin = FLT_MAX;
-	double KdrMax = -FLT_MAX, KdgMax = -FLT_MAX, KdbMax = -FLT_MAX, KsMax = -FLT_MAX, sigmaMax = -FLT_MAX;
-	double mn, mx;
-
-	const float DELTA = 0.025f;
-	for (float t = 0.0f; t <= 1.0f; t += DELTA) {
-		cv::minMaxLoc(material.getKd(t, 0), &mn, &mx); KdrMin = min(KdrMin, mn); KdrMax = max(KdrMax, mx);
-		cv::minMaxLoc(material.getKd(t, 1), &mn, &mx); KdgMin = min(KdgMin, mn); KdgMax = max(KdgMax, mx);
-		cv::minMaxLoc(material.getKd(t, 2), &mn, &mx); KdbMin = min(KdbMin, mn); KdbMax = max(KdbMax, mx);
-		cv::minMaxLoc(material.getKs(t), &mn, &mx); KsMin = min(KsMin, mn); KsMax = max(KsMax, mx);
-		cv::minMaxLoc(material.getSigma(t), &mn, &mx); sigmaMin = min(sigmaMin, mn); sigmaMax = max(sigmaMax, mx);
-	}
-	
-	// Print stats.
-	out << "Kdr = [" << KdrMin << ", " << KdrMax << "]\n";
-	out << "Kdg = [" << KdgMin << ", " << KdgMax << "]\n";
-	out << "Kdb = [" << KdbMin << ", " << KdbMax << "]\n";
-	out << "Ks = [" << KsMin << ", " << KsMax << "]\n";
-	out << "sigma = [" << sigmaMin << ", " << sigmaMax << "]\n";
-	out << std::endl;
-
-	out << "Kdr phi degree " << material.Kd[0].phi.degree() << "\n";
-	out << "Kdg phi degree " << material.Kd[1].phi.degree() << "\n";
-	out << "Kdb phi degree " << material.Kd[2].phi.degree() << "\n";
-	out << "Ks phi degree " << material.Ks.phi.degree() << "\n";
-	out << "sigma phi degree " << material.sigma.phi.degree() << "\n";
-	out << std::endl;
-
-	cv::minMaxLoc(material.Kd[0].factors[0], &mn, &mx);
-	out << "Kdr A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[0].factors[1], &mn, &mx);
-	out << "Kdr B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[0].factors[2], &mn, &mx);
-	out << "Kdr C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[0].factors[3], &mn, &mx);
-	out << "Kdr D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(material.Kd[1].factors[0], &mn, &mx);
-	out << "Kdg A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[1].factors[1], &mn, &mx);
-	out << "Kdg B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[1].factors[2], &mn, &mx);
-	out << "Kdg C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[1].factors[3], &mn, &mx);
-	out << "Kdg D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(material.Kd[2].factors[0], &mn, &mx);
-	out << "Kdb A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[2].factors[1], &mn, &mx);
-	out << "Kdb B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[2].factors[2], &mn, &mx);
-	out << "Kdb C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Kd[2].factors[3], &mn, &mx);
-	out << "Kdb D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(material.Ks.factors[0], &mn, &mx);
-	out << "Ks A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Ks.factors[1], &mn, &mx);
-	out << "Ks B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Ks.factors[2], &mn, &mx);
-	out << "Ks C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.Ks.factors[3], &mn, &mx);
-	out << "Ks D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	cv::minMaxLoc(material.sigma.factors[0], &mn, &mx);
-	out << "sigma A " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.sigma.factors[1], &mn, &mx);
-	out << "sigma B " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.sigma.factors[2], &mn, &mx);
-	out << "sigma C " << mn << " " << mx << std::endl;
-	cv::minMaxLoc(material.sigma.factors[3], &mn, &mx);
-	out << "sigma D " << mn << " " << mx << std::endl;
-	out << std::endl;
-
-	out.close();
-
-}
-
-void spatialPrediction(const std::string & dir) {
+void spatialPrediction(const std::string & srcFilepath, const std::string & outFilepath) {
 
 	// Source.
-	TSVBRDF source(dir);
+	TSVBRDF source(srcFilepath);
 
 	// Source guide channels.
 	int sn = source.width * source.height;
@@ -123,18 +27,22 @@ void spatialPrediction(const std::string & dir) {
 	std::vector<float> sourceGuides(numGuideChannels * sn);
 
 	// Source style channels.
-	int numStyleChannels = 20;
+	int numStyleChannels = 25;
 	std::vector<cv::Mat> sourceChannels;
 	for (int c = 0; c < 3; ++c)
 		for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.Kd[c].factors[f]);
 	for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.Ks.factors[f]);
 	for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.sigma.factors[f]);
+	for (int c = 0; c < 3; ++c)
+		sourceChannels.push_back(source.getKd(0.0f, c));
+	sourceChannels.push_back(source.getKs(0.0f));
+	sourceChannels.push_back(source.getSigma(0.0f));
 	cv::Mat sourceStyles;
 	cv::merge(sourceChannels, sourceStyles);
 
 	// Target resolution.
-	int targetWidth = 2 * source.width;
-	int targetHeight = 2 * source.height;
+	int targetWidth = 4 * source.width;
+	int targetHeight = 4 * source.height;
 
 	// Target guide channels.
 	int tn = targetWidth * targetHeight;
@@ -145,8 +53,11 @@ void spatialPrediction(const std::string & dir) {
 
 	// Style weights.
 	std::vector<float> styleWeights(numStyleChannels);
-	for (int i = 0; i < numStyleChannels; ++i)
+	for (int i = 0; i < 20; ++i)
 		if (i < 12) styleWeights[i] = 1.0f;
+		else styleWeights[i] = 0.0f;
+	for (int i = 20; i < 25; ++i)
+		if (i < 23) styleWeights[i] = 0.0f;
 		else styleWeights[i] = 0.0f;
 
 	// Guide weights.
@@ -155,22 +66,14 @@ void spatialPrediction(const std::string & dir) {
 		guideWeights[i] = 0.0f;
 
 	// Phi.
-	int phiDegree = EBSYNTH_PHI_DEGREE;
 	std::vector<float> phi;
-	for (int c = 0; c < 3; ++c) {
-		for (int i = 0; i <= phiDegree; i++)
-			if (i > source.Kd[c].phi.degree()) phi.push_back(0);
-			else phi.push_back(source.Kd[c].phi.coefs[source.Kd[c].phi.degree() - i]);
-	}
-	for (int i = 0; i <= phiDegree; i++) {
-		if (i > source.Ks.phi.degree()) phi.push_back(0);
-		else phi.push_back(source.Ks.phi.coefs[source.Ks.phi.degree() - i]);
-
-	}
-	for (int i = 0; i <= phiDegree; i++) {
-		if (i > source.sigma.phi.degree()) phi.push_back(0);
-		else phi.push_back(source.sigma.phi.coefs[source.sigma.phi.degree() - i]);
-	}
+	for (int c = 0; c < 3; ++c)
+		for (int i = 0; i <= Polynom::DEGREE; i++)
+			phi.push_back(source.Kd[c].phi.coefs[i]);
+	for (int i = 0; i <= Polynom::DEGREE; i++)
+		phi.push_back(source.Ks.phi.coefs[i]);
+	for (int i = 0; i <= Polynom::DEGREE; i++)
+		phi.push_back(source.sigma.phi.coefs[i]);
 
 	// Pyramid levels.
 	int patchSize = 5;
@@ -209,7 +112,7 @@ void spatialPrediction(const std::string & dir) {
 		numPatchMatchItersPerLevel.data(),
 		stopThresholdPerLevel.data(),
 		phi.data(),
-		phiDegree,
+		Polynom::DEGREE,
 		targetStyles.data
 		);
 
@@ -229,28 +132,19 @@ void spatialPrediction(const std::string & dir) {
 		for (int f = 0; f < 4; ++f) targetChannels.push_back(target.Kd[c].factors[f]);
 	for (int f = 0; f < 4; ++f) targetChannels.push_back(target.Ks.factors[f]);
 	for (int f = 0; f < 4; ++f) targetChannels.push_back(target.sigma.factors[f]);
+	for (int i = 0; i < 5; ++i) targetChannels.push_back(cv::Mat(targetHeight, targetWidth, target.Kd[0].factors[0].type()));
 	cv::split(targetStyles, targetChannels);
 
-	// Output dir.
-	const std::string reconstructDir = "../out/reconstruct/";
-	const std::string spatialDir = "../out/spatial/";
-
-	// Create dirs.
-	CreateDirectory(reconstructDir.c_str(), nullptr);
-	CreateDirectory((reconstructDir + dir).c_str(), nullptr);
-	CreateDirectory(spatialDir.c_str(), nullptr);
-	CreateDirectory((spatialDir + dir).c_str(), nullptr);
-	
 	// Export.
-	source.export(reconstructDir + dir);
-	target.export(spatialDir + dir);
+	source.exportFrames(outFilepath + "/reconstruct");
+	target.exportFrames(outFilepath + "/spatial");
 
 }
 
-void temporalPrediction(const std::string & sourceDir, const std::string & targetDir, float t0 = 0.0f) {
+void temporalPrediction(const std::string & srcFilepath, const std::string & tgtFilepath, const std::string & outFilepath, float t0 = 0.0f) {
 
 	// Source.
-	TSVBRDF source(sourceDir);
+	TSVBRDF source(srcFilepath);
 
 	// Guide image to be equalized.
 	cv::Mat guideImg = 0.2125f * source.getKd(t0, 0) + 0.7154f * source.getKd(t0, 1) + 0.0721f * source.getKd(t0, 2);
@@ -276,7 +170,7 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 	cv::merge(sourceChannels, sourceStyles);
 
 	// Target.
-	TSVBRDF target(targetDir);
+	TSVBRDF target(tgtFilepath);
 
 	// Target guide channels.
 	cv::Mat targetGuides = 0.2125f * target.getKd(t0, 0) + 0.7154f * target.getKd(t0, 1) + 0.0721f * target.getKd(t0, 2);
@@ -300,22 +194,14 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 		guideWeights[i] = totalGuideWeight / numGuideChannels;
 
 	// Phi.
-	int phiDegree = EBSYNTH_PHI_DEGREE;
 	std::vector<float> phi;
-	for (int c = 0; c < 3; ++c) {
-		for (int i = 0; i <= phiDegree; i++)
-			if (i > source.Kd[c].phi.degree()) phi.push_back(0);
-			else phi.push_back(source.Kd[c].phi.coefs[source.Kd[c].phi.degree() - i]);
-	}
-	for (int i = 0; i <= phiDegree; i++) {
-		if (i > source.Ks.phi.degree()) phi.push_back(0);
-		else phi.push_back(source.Ks.phi.coefs[source.Ks.phi.degree() - i]);
-
-	}
-	for (int i = 0; i <= phiDegree; i++) {
-		if (i > source.sigma.phi.degree()) phi.push_back(0);
-		else phi.push_back(source.sigma.phi.coefs[source.sigma.phi.degree() - i]);
-	}
+	for (int c = 0; c < 3; ++c)
+		for (int i = 0; i <= Polynom::DEGREE; i++)
+			phi.push_back(source.Kd[c].phi.coefs[i]);
+	for (int i = 0; i <= Polynom::DEGREE; i++)
+		phi.push_back(source.Ks.phi.coefs[i]);
+	for (int i = 0; i <= Polynom::DEGREE; i++)
+		phi.push_back(source.sigma.phi.coefs[i]);
 
 	// Pyramid levels.
 	int patchSize = 5;
@@ -354,7 +240,7 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 		numPatchMatchItersPerLevel.data(),
 		stopThresholdPerLevel.data(),
 		phi.data(),
-		phiDegree,
+		Polynom::DEGREE,
 		targetStyles.data
 		);
 
@@ -386,13 +272,6 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 	//float KsMSE = cv::sum((reconstruct.getKs(t0) - target.getKs(t0)).mul(reconstruct.getKs(t0) - target.getKs(t0)))[0];
 	//float sigmaMSE = cv::sum((reconstruct.getSigma(t0) - target.getSigma(t0)).mul(reconstruct.getSigma(t0) - target.getSigma(t0)))[0];
 
-#if 0
-	// Adjust only offset.
-	for (int c = 0; c < 3; ++c)
-		reconstruct.Kd[c].factors[3] = target.getKd(t0, c) - reconstruct.getKd(t0, c) + reconstruct.Kd[c].factors[3];
-	reconstruct.Ks.factors[3] = target.getKs(t0) - reconstruct.getKs(t0) + reconstruct.Ks.factors[3];
-	reconstruct.sigma.factors[3] = target.getSigma(t0) - reconstruct.getSigma(t0) + reconstruct.sigma.factors[3];
-#else
 	// Original paper transfer.
 	for (int c = 0; c < 3; ++c) {
 		reconstruct.Kd[c].factors[0] = (target.getKd(t0, c).mul(1.0f / reconstruct.getKd(t0, c))).mul(reconstruct.Kd[c].factors[0]);
@@ -402,18 +281,9 @@ void temporalPrediction(const std::string & sourceDir, const std::string & targe
 	reconstruct.Ks.factors[3] = (target.getKs(t0).mul(1.0f / reconstruct.getKs(t0))).mul(reconstruct.Ks.factors[3]);
 	reconstruct.sigma.factors[0] = (target.getSigma(t0).mul(1.0f / reconstruct.getSigma(t0))).mul(reconstruct.sigma.factors[0]);
 	reconstruct.sigma.factors[3] = (target.getSigma(t0).mul(1.0f / reconstruct.getSigma(t0))).mul(reconstruct.sigma.factors[3]);
-#endif
-
-	// Output dir.
-	const std::string reconstructDir = "../out/temporal/";
-	const std::string dir = sourceDir + "-" + targetDir;
-
-	// Create dirs.
-	CreateDirectory(reconstructDir.c_str(), nullptr);
-	CreateDirectory((reconstructDir + dir).c_str(), nullptr);
 
 	// Export.
-	reconstruct.export(reconstructDir + dir);
+	reconstruct.exportFrames(outFilepath);
 
 }
 
@@ -442,13 +312,12 @@ std::string type2str(int type) {
 
 int main(int argc, char** argv) {
 	
-	if (argc == 2) {
-		spatialPrediction(argv[1]);
-		//dataStatistics(argv[1]);
+	if (argc == 3) {
+		spatialPrediction(argv[1], argv[2]);
 	}
 	
-	else if (argc == 3) {
-		temporalPrediction(argv[1], argv[2]);
+	else if (argc == 4) {
+		temporalPrediction(argv[1], argv[2], argv[3]);
 	}
 
 	return 0;

@@ -252,7 +252,7 @@ struct PatchSSD_Split
 	const Vec<NS, float> styleWeights;
 	const Vec<NG, float> guideWeights;
 
-	const Vec<NS * (D + 1) / 4, float> phi;
+	const Vec<5 * (D + 1), float> phi;
 
 	PatchSSD_Split(const TexArray2<NS, T>& targetStyle,
 		const TexArray2<NS, T>& sourceStyle,
@@ -263,7 +263,7 @@ struct PatchSSD_Split
 		const Vec<NS, float>&   styleWeights,
 		const Vec<NG, float>&   guideWeights,
 		
-		const Vec<NS * (D + 1) / 4, float>&   phi)
+		const Vec<5 * (D + 1), float>&   phi)
 
 		: targetStyle(targetStyle), sourceStyle(sourceStyle),
 		targetGuide(targetGuide), sourceGuide(sourceGuide),
@@ -290,12 +290,11 @@ struct PatchSSD_Split
 					for (int i = 0; i < NS; i++)
 					{
 						const float diff = float(pixTs[i]) - float(pixSs[i]);
-
 						error += styleWeights[i] * diff*diff;
 					}
 #else
 					Vec<D + 1, float> p;
-					for (int i = 0, int o = 0; i < NS; i += 4, o += (D + 1))
+					for (int i = 0, int o = 0; i < 20; i += 4, o += D + 1)
 					{
 						const float targetR = 1.0f / float(pixTs[i + 1]);
 						const float targetO = -float(pixTs[i + 2]) * targetR;
@@ -314,8 +313,8 @@ struct PatchSSD_Split
 							{
 								float b = 1.0f;
 								for (int l = 0; l < j; ++l) b *= float(k - l) / float(j - l);
-								const float targetVal = targetA * phi[o + j] * powf(targetR, j) * powf(targetO, k - j);
-								const float sourceVal = sourceA * phi[o + j] * powf(sourceR, j) * powf(sourceO, k - j);
+								const float targetVal = targetA * phi[o + k] * powf(targetR, j) * powf(targetO, k - j);
+								const float sourceVal = sourceA * phi[o + k] * powf(sourceR, j) * powf(sourceO, k - j);
 								p[j] += b * (targetVal - sourceVal);
 							}
 
@@ -336,7 +335,12 @@ struct PatchSSD_Split
 							}
 							error += styleWeights[i] * val;
 						}
-
+					}
+					// intial channels
+					for (int i = 20; i < NS; i++)
+					{
+						const float diff = float(pixTs[i]) - float(pixSs[i]);
+						error += styleWeights[i] * diff*diff;
 					}
 #endif
 				}
@@ -616,8 +620,8 @@ void runEbsynth(int    ebsynthBackend,
 			Vec<NG, float> guideWeightsVec;
 			for (int i = 0; i < NG; i++) { guideWeightsVec[i] = guideWeights[i]; }
 
-			Vec<(D + 1) * NS / 4, float> phiVec;
-			for (int i = 0; i < (D + 1) * NS / 4; i++) { phiVec[i] = phi[i]; }
+			Vec<(D + 1) * 5, float> phiVec;
+			for (int i = 0; i < (D + 1) * 5; i++) { phiVec[i] = phi[i]; }
 
 			const int numGpuThreadsPerBlock = 16;
 

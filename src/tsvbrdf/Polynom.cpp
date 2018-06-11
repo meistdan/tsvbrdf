@@ -9,7 +9,7 @@
 
 cv::Mat Polynom::eval(const cv::Mat & t) {
 	cv::Mat res(t.size(), t.type(), cv::Scalar(0.0f));
-	for (unsigned int i = 0; i < coefs.size(); ++i)
+	for (int i = DEGREE; i >= 0; --i)
 		res = res.mul(t) + coefs[i];
 	return res;
 }

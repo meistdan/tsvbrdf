@@ -54,7 +54,7 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 	// Style weights.
 	std::vector<float> styleWeights(numStyleChannels);
 	for (int i = 0; i < 20; ++i)
-		if (i < 12) styleWeights[i] = 1.0f;
+		if (i < 16) styleWeights[i] = 1.0f;
 		else styleWeights[i] = 0.0f;
 	for (int i = 20; i < 25; ++i)
 		if (i < 23) styleWeights[i] = 0.0f;
@@ -138,6 +138,9 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 	// Export.
 	source.exportFrames(outFilepath + "/reconstruct");
 	target.exportFrames(outFilepath + "/spatial");
+
+	// Save result.
+	target.save(outFilepath + "/staf");
 
 }
 

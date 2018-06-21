@@ -217,6 +217,7 @@ void TSVBRDF::exportFrames(const std::string & filepath, float frameRate) {
 	int f = 0;
 	for (float t = 0.0f; t <= 1.0f; t += frameRate) {
 		imgKs = getKs(t);
+		imgKs = cv::max(imgKs, 0.0f);
 		imgKs = imgKs / (4.0f * dotNL * dotEN);
 		imgSigma = getSigma(t);
 		imgSigma = cv::max(imgSigma, 0.0f);

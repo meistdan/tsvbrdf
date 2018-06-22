@@ -225,6 +225,7 @@ void TSVBRDF::exportFrames(const std::string & filepath, float frameRate) {
 		cv::exp(imgSigma, imgSigma);
 		for (int c = 0; c < 3; ++c) {
 			imgKd = getKd(t, c);
+			imgKd = cv::max(imgKd, 0.0f);
 			imgs[c] = (imgKd + imgKs.mul(imgSigma)) * dotNL;
 		}
 		cv::merge(imgs, img);

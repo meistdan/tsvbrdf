@@ -17,6 +17,7 @@ public:
 	float coefs[DEGREE + 1];
 
 	cv::Mat eval(const cv::Mat & t);
+	float eval(float t);
 
 };
 

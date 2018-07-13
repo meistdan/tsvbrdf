@@ -214,6 +214,7 @@ void TSVBRDF::exportFrames(const std::string & filepath, float frameRate) {
 	float dotNL = N.dot(L);
 	float dotEN = N.dot(E);
 	float dotHN = N.dot(H);
+	float aDotHN2 = acos(dotHN) * acos(dotHN);
 	int f = 0;
 	for (float t = 0.0f; t <= 1.0f; t += frameRate) {
 		imgKs = getKs(t);
@@ -221,7 +222,7 @@ void TSVBRDF::exportFrames(const std::string & filepath, float frameRate) {
 		imgKs = imgKs / (4.0f * dotNL * dotEN);
 		imgSigma = getSigma(t);
 		imgSigma = cv::max(imgSigma, 0.0f);
-		imgSigma = -imgSigma * dotHN * dotHN;
+		imgSigma = -imgSigma * aDotHN2;
 		cv::exp(imgSigma, imgSigma);
 		for (int c = 0; c < 3; ++c) {
 			imgKd = getKd(t, c);

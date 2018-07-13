@@ -13,3 +13,11 @@ cv::Mat Polynom::eval(const cv::Mat & t) {
 		res = res.mul(t) + coefs[i];
 	return res;
 }
+
+float Polynom::eval(float t) {
+	float res = 0.0f;
+	for (int i = DEGREE; i >= 0; --i)
+		res = res * t + coefs[i];
+	return res;
+}
+

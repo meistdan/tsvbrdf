@@ -89,8 +89,6 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 		stopThresholdPerLevel[i] = 5;
 	}
 
-	std::cout << "Start spatial" << std::endl << std::flush;
-
 	// EBSynth.
 	ebsynthRun(
 		EBSYNTH_BACKEND_CUDA,
@@ -118,8 +116,6 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 		targetStyles.data
 		);
 
-	std::cout << "End spatial" << std::endl << std::flush;
-
 	// Output.
 	TSVBRDF target(targetWidth, targetHeight, source.Kd[0].factors[0].type());
 	target.Kd[0].phi = source.Kd[0].phi;
@@ -138,13 +134,175 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 	cv::split(targetStyles, targetChannels);
 
 	// Export.
-	source.exportFrames(outFilepath + "/reconstruct");
-	target.exportFrames(outFilepath + "/spatial");
-	target.save(outFilepath + "/staf");
+	source.exportFrames(outFilepath + "/reconstruct/images");
+	target.exportFrames(outFilepath + "/spatial/images");
+	target.save(outFilepath + "/spatial/staf");
 
 }
 
-void temporalPrediction(const std::string & srcFilepath, const std::string & tgtFilepath, const std::string & outFilepath, float t0 = 0.0f) {
+void spatialPredictionRef(const std::string & srcFilepath, const std::string & outFilepath) {
+
+	// Source.
+	TSVBRDF source(srcFilepath);
+
+	// Source guide channels.
+	int sn = source.width * source.height;
+	int numGuideChannels = 1;
+	std::vector<float> sourceGuides(numGuideChannels * sn);
+
+	// Source style channels.
+	int numStyleChannels = 25;
+	std::vector<cv::Mat> sourceChannels;
+	for (int c = 0; c < 3; ++c)
+		for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.Kd[c].factors[f]);
+	for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.Ks.factors[f]);
+	for (int f = 0; f < 4; ++f) sourceChannels.push_back(source.sigma.factors[f]);
+	for (int c = 0; c < 3; ++c)
+		sourceChannels.push_back(source.getKdStatic(0.0f, c));
+	sourceChannels.push_back(source.getKsStatic(0.0f));
+	cv::Mat sigma = source.getSigmaStatic(0.0f);
+	cv::sqrt(sigma, sigma);
+	sigma = 1.0f / sigma;
+	sourceChannels.push_back(sigma);
+	cv::Mat sourceStyles;
+	cv::merge(sourceChannels, sourceStyles);
+
+	// Target resolution.
+	int targetWidth = 4 * source.width;
+	int targetHeight = 4 * source.height;
+
+	// Target guide channels.
+	int tn = targetWidth * targetHeight;
+	std::vector<float> targetGuides(numGuideChannels * tn);
+
+	// Target style channels => output.
+	cv::Mat targetStyles(targetHeight, targetWidth, sourceStyles.type());
+
+	// Style weights.
+	std::vector<float> styleWeights(numStyleChannels);
+	for (int i = 0; i < 20; ++i)
+		styleWeights[i] = 0.0f;
+	for (int i = 20; i < 25; ++i)
+		styleWeights[i] = 1.0f;
+
+	// Guide weights.
+	std::vector<float> guideWeights(numGuideChannels);
+	for (int i = 0; i < numGuideChannels; i++)
+		guideWeights[i] = 0.0f;
+
+	// Phi.
+	std::vector<float> phi;
+	for (int c = 0; c < 3; ++c)
+		for (int i = 0; i <= Polynom::DEGREE; i++)
+			phi.push_back(source.Kd[c].phi.coefs[i]);
+	for (int i = 0; i <= Polynom::DEGREE; i++)
+		phi.push_back(source.Ks.phi.coefs[i]);
+	for (int i = 0; i <= Polynom::DEGREE; i++)
+		phi.push_back(source.sigma.phi.coefs[i]);
+
+	// Pyramid levels.
+	int patchSize = 5;
+	int numPyramidLevels = idealNumPyramidLevels(source.width, source.height, targetWidth, targetHeight, patchSize);
+	std::vector<int> numSearchVoteItersPerLevel(numPyramidLevels);
+	std::vector<int> numPatchMatchItersPerLevel(numPyramidLevels);
+	std::vector<int> stopThresholdPerLevel(numPyramidLevels);
+	for (int i = 0; i < numPyramidLevels; i++) {
+		numSearchVoteItersPerLevel[i] = 8;
+		numPatchMatchItersPerLevel[i] = 4;
+		stopThresholdPerLevel[i] = 5;
+	}
+
+	// EBSynth.
+	ebsynthRun(
+		EBSYNTH_BACKEND_CUDA,
+		numStyleChannels,
+		numGuideChannels,
+		source.width,
+		source.height,
+		sourceStyles.data,
+		sourceGuides.data(),
+		targetWidth,
+		targetHeight,
+		targetGuides.data(),
+		nullptr,
+		styleWeights.data(),
+		guideWeights.data(),
+		0.075f,
+		patchSize,
+		EBSYNTH_VOTEMODE_PLAIN,
+		numPyramidLevels,
+		numSearchVoteItersPerLevel.data(),
+		numPatchMatchItersPerLevel.data(),
+		stopThresholdPerLevel.data(),
+		phi.data(),
+		Polynom::DEGREE,
+		targetStyles.data
+	);
+
+	// Output.
+	TSVBRDF target(targetWidth, targetHeight, source.Kd[0].factors[0].type());
+	target.Kd[0].phi = source.Kd[0].phi;
+	target.Kd[1].phi = source.Kd[1].phi;
+	target.Kd[2].phi = source.Kd[2].phi;
+	target.Ks.phi = source.Ks.phi;
+	target.sigma.phi = source.sigma.phi;
+
+	// Split channels.
+	std::vector<cv::Mat> targetChannels;
+	for (int c = 0; c < 3; ++c)
+		for (int f = 0; f < 4; ++f) targetChannels.push_back(target.Kd[c].factors[f]);
+	for (int f = 0; f < 4; ++f) targetChannels.push_back(target.Ks.factors[f]);
+	for (int f = 0; f < 4; ++f) targetChannels.push_back(target.sigma.factors[f]);
+	for (int i = 0; i < 5; ++i) targetChannels.push_back(cv::Mat(targetHeight, targetWidth, target.Kd[0].factors[0].type()));
+	cv::split(targetStyles, targetChannels);
+
+	// Image0 and Image1.
+	cv::Mat Kd0[3], Kd1[3];
+	cv::Mat Ks0, Ks1;
+	cv::Mat sigma0, sigma1;
+	float KdPhi0[3], KdPhi1[3];
+	float KsPhi0, KsPhi1;
+	float sigmaPhi0, sigmaPhi1;
+	for (int c = 0; c < 3; ++c) {
+		Kd0[c] = target.getKd(0.0f, c);
+		Kd1[c] = target.getKd(1.0f, c);
+		KdPhi0[c] = target.Kd[c].phi.eval(0.0f);
+		KdPhi1[c] = target.Kd[c].phi.eval(1.0f);
+	}
+	Ks0 = target.getKs(0.0f);
+	Ks1 = target.getKs(1.0f);
+	KsPhi0 = target.Ks.phi.eval(0.0f);
+	KsPhi1 = target.Ks.phi.eval(1.0f);
+	sigma0 = target.getSigma(0.0f);
+	sigma1 = target.getSigma(1.0f);
+	sigmaPhi0 = target.sigma.phi.eval(0.0f);
+	sigmaPhi1 = target.sigma.phi.eval(1.0f);
+
+	// Orginal paper synthesis.
+	for (int c = 0; c < 3; ++c) {
+		target.Kd[c].factors[0] = (Kd0[c] - Kd1[c]) / (KdPhi0[c] - KdPhi1[c]);
+		target.Kd[c].factors[3] = (KdPhi0[c] * Kd1[c] - KdPhi1[c] * Kd0[c]) / (KdPhi0[c] - KdPhi1[c]);
+		//target.Kd[c].factors[1] = cv::Mat(cv::Size(targetHeight, targetWidth), target.Kd[c].factors[1].type(), cv::Scalar(1.0f));
+		//target.Kd[c].factors[2] = cv::Mat(cv::Size(targetHeight, targetWidth), target.Kd[c].factors[2].type(), cv::Scalar(0.0f));
+		cv::resize(source.Kd[c].factors[1], target.Kd[c].factors[1], cv::Size(targetHeight, targetWidth));
+		cv::resize(source.Kd[c].factors[2], target.Kd[c].factors[2], cv::Size(targetHeight, targetWidth));
+	}
+	target.Ks.factors[0] = (Ks0 - Ks1) / (KsPhi0 - KsPhi1);
+	target.Ks.factors[3] = (KsPhi0 * Ks1 - KsPhi1 * Ks0) / (KsPhi0 - KsPhi1);
+	cv::resize(source.Ks.factors[1], target.Ks.factors[1], cv::Size(targetHeight, targetWidth));
+	cv::resize(source.Ks.factors[2], target.Ks.factors[2], cv::Size(targetHeight, targetWidth));
+	target.sigma.factors[0] = (sigma0 - sigma1) / (sigmaPhi0 - sigmaPhi1);
+	target.sigma.factors[3] = (sigmaPhi0 * sigma1 - sigmaPhi1 * Ks0) / (sigmaPhi0 - sigmaPhi1);
+	cv::resize(source.sigma.factors[1], target.sigma.factors[1], cv::Size(targetHeight, targetWidth));
+	cv::resize(source.sigma.factors[2], target.sigma.factors[2], cv::Size(targetHeight, targetWidth));
+
+	// Export.
+	target.exportFrames(outFilepath + "/spatial-ref/images");
+	target.save(outFilepath + "/spatial-ref/staf");
+
+}
+
+void temporalPredictionBRDF(const std::string & srcFilepath, const std::string & tgtFilepath, const std::string & outFilepath, float t0 = 0.0f) {
 
 	// Source.
 	TSVBRDF source(srcFilepath);
@@ -220,8 +378,6 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 		stopThresholdPerLevel[i] = 5;
 	}
 	
-	std::cout << "Start temporal" << std::endl << std::flush;
-
 	// EBSynth.
 	ebsynthRun(
 		EBSYNTH_BACKEND_CUDA,
@@ -248,8 +404,6 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 		Polynom::DEGREE,
 		targetStyles.data
 		);
-
-	std::cout << "End temporal" << std::endl << std::flush;
 
 	// Output.
 	TSVBRDF reconstruct;
@@ -294,7 +448,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 
 }
 
-void temporalPredictionImg(const std::string & srcFilepath, const std::string & tgtFilename, const std::string & outFilepath, float t0 = 0.0f) {
+void temporalPrediction(const std::string & srcFilepath, const std::string & tgtFilename, const std::string & outFilepath, float t0 = 0.0f) {
 
 	// Source.
 	TSVBRDF source(srcFilepath);
@@ -378,8 +532,6 @@ void temporalPredictionImg(const std::string & srcFilepath, const std::string & 
 		stopThresholdPerLevel[i] = 5;
 	}
 
-	std::cout << "Start temporal" << std::endl << std::flush;
-
 	// EBSynth.
 	ebsynthRun(
 		EBSYNTH_BACKEND_CUDA,
@@ -406,8 +558,6 @@ void temporalPredictionImg(const std::string & srcFilepath, const std::string & 
 		Polynom::DEGREE,
 		targetStyles.data
 	);
-
-	std::cout << "End temporal" << std::endl << std::flush;
 
 	// Output.
 	TSVBRDF reconstruct;
@@ -446,7 +596,7 @@ void temporalPredictionImg(const std::string & srcFilepath, const std::string & 
 
 }
 
-void temporalPredictionImgRef(const std::string & srcFilepath, const std::string & tgtFilename, const std::string & outFilepath, float t0 = 0.0f) {
+void temporalPredictionRef(const std::string & srcFilepath, const std::string & tgtFilename, const std::string & outFilepath, float t0 = 0.0f) {
 
 	// Source.
 	TSVBRDF source(srcFilepath);
@@ -517,12 +667,12 @@ int main(int argc, char** argv) {
 
 	if (argc == 3) {
 		spatialPrediction(argv[1], argv[2]);
+		spatialPredictionRef(argv[1], argv[2]);
 	}
 	
 	else if (argc == 5) {
-		//temporalPrediction(argv[1], argv[2], argv[3], std::stof(argv[4]));
-		temporalPredictionImg(argv[1], argv[2], argv[3], std::stof(argv[4]));
-		temporalPredictionImgRef(argv[1], argv[2], argv[3], std::stof(argv[4]));
+		temporalPrediction(argv[1], argv[2], argv[3], std::stof(argv[4]));
+		temporalPredictionRef(argv[1], argv[2], argv[3], std::stof(argv[4]));
 	}
 
 	return 0;

@@ -41,7 +41,12 @@ public:
 	cv::Mat getKs(float t);
 	cv::Mat getSigma(float t);
 
+	cv::Mat getKdStatic(float t, int c);
+	cv::Mat getKsStatic(float t);
+	cv::Mat getSigmaStatic(float t);
+
 	cv::Mat eval(Parameter & p, float t);
+	cv::Mat evalStatic(Parameter & p, float t);
 	
 };
 

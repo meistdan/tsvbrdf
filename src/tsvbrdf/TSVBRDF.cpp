@@ -258,7 +258,24 @@ cv::Mat TSVBRDF::getSigma(float t) {
 	return eval(sigma, t);
 }
 
+cv::Mat TSVBRDF::getKdStatic(float t, int c) {
+	return evalStatic(Kd[c], t);
+}
+
+cv::Mat TSVBRDF::getKsStatic(float t) {
+	return evalStatic(Ks, t);
+}
+
+cv::Mat TSVBRDF::getSigmaStatic(float t) {
+	return evalStatic(sigma, t);
+}
+
 cv::Mat TSVBRDF::eval(Parameter & p, float t) {
 	cv::Mat tmp = p.phi.eval((t - p.factors[2]).mul(1.0f / p.factors[1]));
+	return p.factors[0].mul(tmp) + p.factors[3];
+}
+
+cv::Mat TSVBRDF::evalStatic(Parameter & p, float t) {
+	cv::Mat tmp = p.phi.eval(cv::Mat(p.factors[0].size(), p.factors[0].type(), cv::Scalar(t)));
 	return p.factors[0].mul(tmp) + p.factors[3];
 }

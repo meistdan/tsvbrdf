@@ -279,3 +279,22 @@ cv::Mat TSVBRDF::evalStatic(Parameter & p, float t) {
 	cv::Mat tmp = p.phi.eval(cv::Mat(p.factors[0].size(), p.factors[0].type(), cv::Scalar(t)));
 	return p.factors[0].mul(tmp) + p.factors[3];
 }
+
+cv::Mat TSVBRDF::getKdMax(int c) {
+	return max(Kd[c]);
+}
+
+cv::Mat TSVBRDF::getKsMax() {
+	return max(Ks);
+}
+
+cv::Mat TSVBRDF::getSigmaMax() {
+	return max(sigma);
+}
+
+cv::Mat TSVBRDF::max(Parameter & p, float frameRate) {
+	cv::Mat res(p.factors[0].size(), p.factors[0].type(), cv::Scalar(-FLT_MAX));
+	for (float t = 0.0f; t <= 1.0f; t += frameRate)
+		res = cv::max(res, eval(p, t));
+	return res;
+}

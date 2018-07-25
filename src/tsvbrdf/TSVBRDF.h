@@ -48,6 +48,12 @@ public:
 	cv::Mat eval(Parameter & p, float t);
 	cv::Mat evalStatic(Parameter & p, float t);
 	
+	cv::Mat getKdMax(int c);
+	cv::Mat getKsMax(void);
+	cv::Mat getSigmaMax(void);
+
+	cv::Mat max(Parameter & p, float frameRate = 0.02f);
+
 };
 
 #endif /* _TSVBRDF_H_ */

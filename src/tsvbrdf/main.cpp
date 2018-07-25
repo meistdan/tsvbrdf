@@ -282,8 +282,6 @@ void spatialPredictionRef(const std::string & srcFilepath, const std::string & o
 	for (int c = 0; c < 3; ++c) {
 		target.Kd[c].factors[0] = (Kd0[c] - Kd1[c]) / (KdPhi0[c] - KdPhi1[c]);
 		target.Kd[c].factors[3] = (KdPhi0[c] * Kd1[c] - KdPhi1[c] * Kd0[c]) / (KdPhi0[c] - KdPhi1[c]);
-		//target.Kd[c].factors[1] = cv::Mat(cv::Size(targetHeight, targetWidth), target.Kd[c].factors[1].type(), cv::Scalar(1.0f));
-		//target.Kd[c].factors[2] = cv::Mat(cv::Size(targetHeight, targetWidth), target.Kd[c].factors[2].type(), cv::Scalar(0.0f));
 		cv::resize(source.Kd[c].factors[1], target.Kd[c].factors[1], cv::Size(targetHeight, targetWidth));
 		cv::resize(source.Kd[c].factors[2], target.Kd[c].factors[2], cv::Size(targetHeight, targetWidth));
 	}
@@ -583,12 +581,24 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 	reconstruct.exportFrames(outFilepath + "/temporal/images");
 	reconstruct.save(outFilepath + "/temporal/staf");
 
+#if 1
 	// Original paper transfer.
 	for (int c = 0; c < 3; ++c) {
 		cv::Mat recKd = reconstruct.getKd(t0, c);
 		reconstruct.Kd[c].factors[0] = (targetKd[c].mul(1.0f / recKd)).mul(reconstruct.Kd[c].factors[0]);
 		reconstruct.Kd[c].factors[3] = (targetKd[c].mul(1.0f / recKd)).mul(reconstruct.Kd[c].factors[3]);
 	}
+#else
+	for (int c = 0; c < 3; ++c) {
+		cv::Mat pmax = reconstruct.getKdMax(c);
+		cv::Mat p0 = reconstruct.getKd(t0, c);
+		cv::Mat p1 = targetKd[c];
+		cv::Mat alpha = (1.0f - p1).mul(1.0f / (pmax - p0));
+		cv::Mat beta = p1 - alpha.mul(p0);
+		reconstruct.Kd[c].factors[0] = alpha.mul(reconstruct.Kd[c].factors[0]);
+		reconstruct.Kd[c].factors[3] = alpha.mul(reconstruct.Kd[c].factors[3]) + beta;
+	}
+#endif
 
 	// Export.
 	reconstruct.exportFrames(outFilepath + "/transfer/images");

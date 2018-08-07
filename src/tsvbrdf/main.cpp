@@ -474,7 +474,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 
 	// Target.
 	cv::Mat target = cv::imread(tgtFilename, CV_LOAD_IMAGE_UNCHANGED);
-	cv::resize(target, target, cv::Size(300,300));
+	//cv::resize(target, target, cv::Size(300,300));
 	cv::Mat targetKd[3];
 	for (int c = 0; c < 3; ++c) {
 		cv::extractChannel(target, targetKd[c], c);

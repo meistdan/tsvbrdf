@@ -18,95 +18,6 @@ TSVBRDF::TSVBRDF(const std::string & filepath) {
 	load(filepath);
 }
 
-#if 0
-void TSVBRDF::load(const std::string & dir) {
-	
-	// Data path.
-	const std::string path = "../data/" + dir + "/SIM/" + dir + "-staf-";
-
-	// Images.
-	cv::Mat img;
-	const char factorChars[] = { 'A', 'B', 'C', 'D' };
-	
-	// Border.
-	const int BORDER = 20;
-
-	// Kd.
-	for (int f = 0; f < 4; ++f) {
-		img = cv::imread(path + "Kd-" + factorChars[f] + ".exr", CV_LOAD_IMAGE_UNCHANGED);
-		cv::Rect cropRect(BORDER, BORDER, img.size().width - 2 * BORDER, img.size().height - 2 * BORDER);
-		img = img(cropRect).clone();
-		for (int c = 0; c < 3; ++c)
-			cv::extractChannel(img, Kd[c].factors[f], c);
-	}
-
-	// Ks.
-	for (int f = 0; f < 4; ++f) {
-		img = cv::imread(path + "Ks-" + factorChars[f] + ".exr", CV_LOAD_IMAGE_UNCHANGED);
-		cv::Rect cropRect(BORDER, BORDER, img.size().width - 2 * BORDER, img.size().height - 2 * BORDER);
-		img = img(cropRect).clone();
-		cv::extractChannel(img, Ks.factors[f], 0);
-	}
-
-	// Sigma.
-	for (int f = 0; f < 4; ++f) {
-		img = cv::imread(path + "Sigma-" + factorChars[f] + ".exr", CV_LOAD_IMAGE_UNCHANGED);
-		cv::Rect cropRect(BORDER, BORDER, img.size().width - 2 * BORDER, img.size().height - 2 * BORDER);
-		img = img(cropRect).clone();
-		cv::extractChannel(img, sigma.factors[f], 0);
-	}
-
-	// Resolution.
-	width = img.size().width;
-	height = img.size().height;
-
-	// Phi.
-	float coef;
-	std::string line, value, key;
-
-	// Kd.
-	std::ifstream file(path + "Kd-phi.txt");
-	if (file.is_open()) {
-		int c = 0;
-		while (getline(file, line)) {
-			std::istringstream ss(line);
-			ss >> key;
-			if (key.find("pphi") != std::string::npos && !line.empty()) {
-				Kd[c].phi.coefs.clear();
-				while (true) {
-					ss >> coef;
-					if (ss.fail())
-						break;
-					Kd[c].phi.coefs.push_back(coef);
-				}
-				++c;
-			}
-		}
-		file.close();
-	}
-
-	// Ks and sigma.
-	file.open(path + "Ks-phi.txt");
-	if (file.is_open()) {
-		while (getline(file, line)) {
-			std::istringstream ss(line);
-			ss >> key;
-			if (key.find("pphi") != std::string::npos && !line.empty()) {
-				TSVBRDF::Parameter & param = key.find("pphi_Ks") != std::string::npos ? Ks : sigma;
-				param.phi.coefs.clear();
-				while (true) {
-					ss >> coef;
-					if (ss.fail())
-						break;
-					param.phi.coefs.push_back(coef);
-				}
-			}
-		}
-		file.close();
-	}
-
-}
-#else
 void TSVBRDF::load(const std::string & filepath) {
 
 	// Images.
@@ -170,8 +81,27 @@ void TSVBRDF::load(const std::string & filepath) {
 
 	file.close();
 
-}
+#if 0
+	const float ALPHA = 1.0 / 0.85f;
+	const float BETA = 0.15f;
+
+	for (int c = 0; c < 3; ++c) {
+		Kd[c].factors[2] = Kd[c].factors[2] - BETA;
+	}
+	Ks.factors[2] = Ks.factors[2] - BETA;
+	sigma.factors[2] = sigma.factors[2] -  BETA;
+	
+	for (int c = 0; c < 3; ++c) {
+		Kd[c].factors[1] = ALPHA * Kd[c].factors[1];
+		Kd[c].factors[2] = ALPHA * Kd[c].factors[2];
+	}
+	Ks.factors[1] = ALPHA * Ks.factors[1];
+	Ks.factors[2] = ALPHA * Ks.factors[2];
+	sigma.factors[1] = ALPHA * sigma.factors[1];
+	sigma.factors[2] = ALPHA * sigma.factors[2];
 #endif
+
+}
 
 void TSVBRDF::save(const std::string & filepath) {
 	const char factorChars[] = { 'A', 'B', 'C', 'D' };

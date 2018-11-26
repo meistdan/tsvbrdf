@@ -12,7 +12,6 @@ set(HDR
 
 set(SRC
   main.cpp
-  Polynom.cpp
   TSVBRDF.cpp
 )
 # Find includes in corresponding build directories.

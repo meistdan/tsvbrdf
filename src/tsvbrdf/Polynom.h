@@ -10,14 +10,24 @@
 
 #include "Globals.h"
 
+template <int DEGREE>
 class Polynom {
 public:
 
-	static const int DEGREE = 6;
 	float coefs[DEGREE + 1];
+  cv::Mat eval(const cv::Mat & t) {
+    cv::Mat res(t.size(), t.type(), cv::Scalar(0.0f));
+    for (int i = DEGREE; i >= 0; --i)
+      res = res.mul(t) + coefs[i];
+    return res;
+  }
 
-	cv::Mat eval(const cv::Mat & t);
-	float eval(float t);
+  float eval(float t) {
+    float res = 0.0f;
+    for (int i = DEGREE; i >= 0; --i)
+      res = res * t + coefs[i];
+    return res;
+  }
 
 };
 

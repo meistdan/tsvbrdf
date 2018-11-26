@@ -19,7 +19,7 @@ int idealNumPyramidLevels(int sourceWidth, int sourceHeight, int targetWidth, in
 void spatialPrediction(const std::string & srcFilepath, const std::string & outFilepath) {
 
 	// Source.
-	TSVBRDF source(srcFilepath);
+  STAFTSVBRDF source(srcFilepath);
 
 	// Source guide channels.
 	int sn = source.width * source.height;
@@ -54,11 +54,11 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 	// Style weights.
 	std::vector<float> styleWeights(numStyleChannels);
 	for (int i = 0; i < 20; ++i) {
-		if (i < 16) styleWeights[i] = 1.0f;
+		if (i < 16) styleWeights[i] = 0.0f;
 		else styleWeights[i] = 0.0f;
 	}
 	for (int i = 20; i < 25; ++i) {
-		if (i < 23) styleWeights[i] = 0.0f;
+		if (i < 23) styleWeights[i] = 1.0f;
 		else styleWeights[i] = 0.0f;
 	}
 
@@ -70,11 +70,11 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 	// Phi.
 	std::vector<float> phi;
 	for (int c = 0; c < 3; ++c)
-		for (int i = 0; i <= Polynom::DEGREE; i++)
+		for (int i = 0; i <= Parameter::DEGREE; i++)
 			phi.push_back(source.Kd[c].phi.coefs[i]);
-	for (int i = 0; i <= Polynom::DEGREE; i++)
+	for (int i = 0; i <= Parameter::DEGREE; i++)
 		phi.push_back(source.Ks.phi.coefs[i]);
-	for (int i = 0; i <= Polynom::DEGREE; i++)
+	for (int i = 0; i <= Parameter::DEGREE; i++)
 		phi.push_back(source.sigma.phi.coefs[i]);
 
 	// Pyramid levels.
@@ -86,7 +86,7 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 	for (int i = 0; i < numPyramidLevels; i++) {
 		numSearchVoteItersPerLevel[i] = 8;
 		numPatchMatchItersPerLevel[i] = 4;
-		stopThresholdPerLevel[i] = 5;
+		stopThresholdPerLevel[i] = 0;
 	}
 
 	// EBSynth.
@@ -112,12 +112,12 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 		numPatchMatchItersPerLevel.data(),
 		stopThresholdPerLevel.data(),
 		phi.data(),
-		Polynom::DEGREE,
+    Parameter::DEGREE,
 		targetStyles.data
 		);
 
 	// Output.
-	TSVBRDF target(targetWidth, targetHeight, source.Kd[0].factors[0].type());
+  STAFTSVBRDF target(targetWidth, targetHeight, source.Kd[0].factors[0].type());
 	target.Kd[0].phi = source.Kd[0].phi;
 	target.Kd[1].phi = source.Kd[1].phi;
 	target.Kd[2].phi = source.Kd[2].phi;
@@ -132,7 +132,7 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 	for (int f = 0; f < 4; ++f) targetChannels.push_back(target.sigma.factors[f]);
 	for (int i = 0; i < 5; ++i) targetChannels.push_back(cv::Mat(targetHeight, targetWidth, target.Kd[0].factors[0].type()));
 	cv::split(targetStyles, targetChannels);
-
+  
 	// Export.
 	source.exportFrames(outFilepath + "/reconstruct/images");
 	target.exportFrames(outFilepath + "/spatial/images");
@@ -143,7 +143,7 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 void spatialPredictionRef(const std::string & srcFilepath, const std::string & outFilepath) {
 
 	// Source.
-	TSVBRDF source(srcFilepath);
+  STAFTSVBRDF source(srcFilepath);
 
 	// Source guide channels.
 	int sn = source.width * source.height;
@@ -193,11 +193,11 @@ void spatialPredictionRef(const std::string & srcFilepath, const std::string & o
 	// Phi.
 	std::vector<float> phi;
 	for (int c = 0; c < 3; ++c)
-		for (int i = 0; i <= Polynom::DEGREE; i++)
+		for (int i = 0; i <= Parameter::DEGREE; i++)
 			phi.push_back(source.Kd[c].phi.coefs[i]);
-	for (int i = 0; i <= Polynom::DEGREE; i++)
+	for (int i = 0; i <= Parameter::DEGREE; i++)
 		phi.push_back(source.Ks.phi.coefs[i]);
-	for (int i = 0; i <= Polynom::DEGREE; i++)
+	for (int i = 0; i <= Parameter::DEGREE; i++)
 		phi.push_back(source.sigma.phi.coefs[i]);
 
 	// Pyramid levels.
@@ -209,7 +209,7 @@ void spatialPredictionRef(const std::string & srcFilepath, const std::string & o
 	for (int i = 0; i < numPyramidLevels; i++) {
 		numSearchVoteItersPerLevel[i] = 8;
 		numPatchMatchItersPerLevel[i] = 4;
-		stopThresholdPerLevel[i] = 5;
+		stopThresholdPerLevel[i] = 0;
 	}
 
 	// EBSynth.
@@ -235,12 +235,12 @@ void spatialPredictionRef(const std::string & srcFilepath, const std::string & o
 		numPatchMatchItersPerLevel.data(),
 		stopThresholdPerLevel.data(),
 		phi.data(),
-		Polynom::DEGREE,
+    Parameter::DEGREE,
 		targetStyles.data
 	);
 
 	// Output.
-	TSVBRDF target(targetWidth, targetHeight, source.Kd[0].factors[0].type());
+  STAFTSVBRDF target(targetWidth, targetHeight, source.Kd[0].factors[0].type());
 	target.Kd[0].phi = source.Kd[0].phi;
 	target.Kd[1].phi = source.Kd[1].phi;
 	target.Kd[2].phi = source.Kd[2].phi;
@@ -303,7 +303,7 @@ void spatialPredictionRef(const std::string & srcFilepath, const std::string & o
 void temporalPredictionBRDF(const std::string & srcFilepath, const std::string & tgtFilepath, const std::string & outFilepath, float t0 = 0.0f) {
 
 	// Source.
-	TSVBRDF source(srcFilepath);
+  STAFTSVBRDF source(srcFilepath);
 
 	// Source style channels.
 	int numStyleChannels = 25;
@@ -327,7 +327,7 @@ void temporalPredictionBRDF(const std::string & srcFilepath, const std::string &
 	sourceGuides.convertTo(sourceGuides, CV_32F, 1.0f / 255.0f);
 
 	// Target.
-	TSVBRDF target(tgtFilepath);
+  STAFTSVBRDF target(tgtFilepath);
 
 	// Target style channels => output.
 	cv::Mat targetStyles(target.height, target.width, sourceStyles.type());
@@ -357,11 +357,11 @@ void temporalPredictionBRDF(const std::string & srcFilepath, const std::string &
 	// Phi.
 	std::vector<float> phi;
 	for (int c = 0; c < 3; ++c)
-		for (int i = 0; i <= Polynom::DEGREE; i++)
+		for (int i = 0; i <= Parameter::DEGREE; i++)
 			phi.push_back(source.Kd[c].phi.coefs[i]);
-	for (int i = 0; i <= Polynom::DEGREE; i++)
+	for (int i = 0; i <= Parameter::DEGREE; i++)
 		phi.push_back(source.Ks.phi.coefs[i]);
-	for (int i = 0; i <= Polynom::DEGREE; i++)
+	for (int i = 0; i <= Parameter::DEGREE; i++)
 		phi.push_back(source.sigma.phi.coefs[i]);
 
 	// Pyramid levels.
@@ -373,7 +373,7 @@ void temporalPredictionBRDF(const std::string & srcFilepath, const std::string &
 	for (int i = 0; i < numPyramidLevels; i++) {
 		numSearchVoteItersPerLevel[i] = 8;
 		numPatchMatchItersPerLevel[i] = 4;
-		stopThresholdPerLevel[i] = 5;
+		stopThresholdPerLevel[i] = 0;
 	}
 	
 	// EBSynth.
@@ -399,12 +399,12 @@ void temporalPredictionBRDF(const std::string & srcFilepath, const std::string &
 		numPatchMatchItersPerLevel.data(),
 		stopThresholdPerLevel.data(),
 		phi.data(),
-		Polynom::DEGREE,
+    Parameter::DEGREE,
 		targetStyles.data
 		);
 
 	// Output.
-	TSVBRDF reconstruct;
+  STAFTSVBRDF reconstruct;
 	reconstruct.resize(target.width, target.height, source.Kd[0].factors[0].type());
 
 	// Reconstruct.
@@ -449,7 +449,7 @@ void temporalPredictionBRDF(const std::string & srcFilepath, const std::string &
 void temporalPrediction(const std::string & srcFilepath, const std::string & tgtFilename, const std::string & outFilepath, float t0 = 0.0f) {
 
 	// Source.
-	TSVBRDF source(srcFilepath);
+  STAFTSVBRDF source(srcFilepath);
 
 	// Source style channels.
 	int numStyleChannels = 25;
@@ -511,11 +511,11 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 	// Phi.
 	std::vector<float> phi;
 	for (int c = 0; c < 3; ++c)
-		for (int i = 0; i <= Polynom::DEGREE; i++)
+		for (int i = 0; i <= Parameter::DEGREE; i++)
 			phi.push_back(source.Kd[c].phi.coefs[i]);
-	for (int i = 0; i <= Polynom::DEGREE; i++)
+	for (int i = 0; i <= Parameter::DEGREE; i++)
 		phi.push_back(source.Ks.phi.coefs[i]);
-	for (int i = 0; i <= Polynom::DEGREE; i++)
+	for (int i = 0; i <= Parameter::DEGREE; i++)
 		phi.push_back(source.sigma.phi.coefs[i]);
 
 	// Pyramid levels.
@@ -527,7 +527,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 	for (int i = 0; i < numPyramidLevels; i++) {
 		numSearchVoteItersPerLevel[i] = 8;
 		numPatchMatchItersPerLevel[i] = 4;
-		stopThresholdPerLevel[i] = 5;
+		stopThresholdPerLevel[i] = 0;
 	}
 
 	// EBSynth.
@@ -553,12 +553,12 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 		numPatchMatchItersPerLevel.data(),
 		stopThresholdPerLevel.data(),
 		phi.data(),
-		Polynom::DEGREE,
+    Parameter::DEGREE,
 		targetStyles.data
 	);
 
 	// Output.
-	TSVBRDF reconstruct;
+  STAFTSVBRDF reconstruct;
 	reconstruct.resize(targetWidth, targetHeight, source.Kd[0].factors[0].type());
 
 	// Reconstruct.
@@ -609,7 +609,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 void temporalPredictionRef(const std::string & srcFilepath, const std::string & tgtFilename, const std::string & outFilepath, float t0 = 0.0f) {
 
 	// Source.
-	TSVBRDF source(srcFilepath);
+  STAFTSVBRDF source(srcFilepath);
 
 	// Target.
 	cv::Mat target = cv::imread(tgtFilename, CV_LOAD_IMAGE_UNCHANGED);
@@ -621,7 +621,7 @@ void temporalPredictionRef(const std::string & srcFilepath, const std::string & 
 	}
 
 	// Output.
-	TSVBRDF reconstruct;
+  STAFTSVBRDF reconstruct;
 	reconstruct.resize(source.width, source.height, source.Kd[0].factors[0].type());
 
 	// Reconstruct.
@@ -677,7 +677,7 @@ int main(int argc, char** argv) {
 
 	if (argc == 3) {
 		spatialPrediction(argv[1], argv[2]);
-		spatialPredictionRef(argv[1], argv[2]);
+		//spatialPredictionRef(argv[1], argv[2]);
 	}
 	
 	else if (argc == 5) {

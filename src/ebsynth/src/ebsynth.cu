@@ -252,8 +252,6 @@ struct PatchSSD_Split
 	const Vec<NS, float> styleWeights;
 	const Vec<NG, float> guideWeights;
 
-	const Vec<5 * (D + 1), float> phi;
-
 	PatchSSD_Split(const TexArray2<NS, T>& targetStyle,
 		const TexArray2<NS, T>& sourceStyle,
 
@@ -261,13 +259,11 @@ struct PatchSSD_Split
 		const TexArray2<NG, T>& sourceGuide,
 
 		const Vec<NS, float>&   styleWeights,
-		const Vec<NG, float>&   guideWeights,
-		
-		const Vec<5 * (D + 1), float>&   phi)
+		const Vec<NG, float>&   guideWeights)
 
 		: targetStyle(targetStyle), sourceStyle(sourceStyle),
 		targetGuide(targetGuide), sourceGuide(sourceGuide),
-		styleWeights(styleWeights), guideWeights(guideWeights), phi(phi) {}
+		styleWeights(styleWeights), guideWeights(guideWeights) {}
 
 	__device__ float operator()(const int   patchSize,
 		const int   tx,
@@ -294,54 +290,30 @@ struct PatchSSD_Split
 					}
 #else
 					Vec<D + 1, float> p;
-					for (int i = 0, int o = 0; i < 20; i += 4, o += D + 1)
-					{
-						const float targetR = 1.0f / float(pixTs[i + 1]);
-						const float targetO = -float(pixTs[i + 2]) * targetR;
-						const float targetA = float(pixTs[i]);
-						const float targetB = float(pixTs[i + 3]);
-						const float sourceR = 1.0f / float(pixSs[i + 1]);
-						const float sourceO = -float(pixSs[i + 2]) * sourceR;
-						const float sourceA = float(pixSs[i]);
-						const float sourceB = float(pixSs[i + 3]);
-						// reconstruct and subtract
-						for (int j = 0; j <= D; ++j)
-						{
-							p[j] = 0.0f;
-							if (j == 0) p[j] += targetB - sourceB;
-							for (int k = j; k <= D; ++k)
-							{
-								float b = 1.0f;
-								for (int l = 0; l < j; ++l) b *= float(k - l) / float(j - l);
-								const float targetVal = targetA * phi[o + k] * powf(targetR, j) * powf(targetO, k - j);
-								const float sourceVal = sourceA * phi[o + k] * powf(sourceR, j) * powf(sourceO, k - j);
-								p[j] += b * (targetVal - sourceVal);
-							}
+          for (int i = 0; i < NS; i += D + 1)
+          {
+            // subtract
+            for (int j = 0; j <= D; ++j)
+              p[j] = pixTs[i + j] - pixSs[i + j];
 
-						}
-						// square and integrate
-						for (int j = 0; j <= 2 * D; ++j)
-						{
-							float val = 0.0f;
-							if (j <= D) {
-								for (int k = 0; k <= j; ++k) {
-									val += p[k] * p[j - k] / float(j + 1);
-								}
-							}
-							else {
-								for (int k = j - D; k <= D; ++k) {
-									val += p[k] * p[j - k] / float(j + 1);
-								}
-							}
-							error += styleWeights[i] * val;
-						}
-					}
-					// intial channels
-					for (int i = 20; i < NS; i++)
-					{
-						const float diff = float(pixTs[i]) - float(pixSs[i]);
-						error += styleWeights[i] * diff*diff;
-					}
+            // square and integrate
+            for (int j = 0; j <= 2 * D; ++j)
+            {
+              float val = 0.0f;
+              if (j <= D) {
+                for (int k = 0; k <= j; ++k) {
+                  val += p[k] * p[j - k] / float(j + 1);
+                }
+              }
+              else {
+                for (int k = j - D; k <= D; ++k) {
+                  val += p[k] * p[j - k] / float(j + 1);
+                }
+              }
+              error += styleWeights[i] * val;
+            }
+
+          }
 #endif
 				}
 
@@ -463,7 +435,6 @@ void runEbsynth(int    ebsynthBackend,
 	int*   numSearchVoteItersPerLevel,
 	int*   numPatchMatchItersPerLevel,
 	int*   stopThresholdPerLevel,
-	float* phi,
 	void*  outputData)
 {
 	const int levelCount = numPyramidLevels;
@@ -620,9 +591,6 @@ void runEbsynth(int    ebsynthBackend,
 			Vec<NG, float> guideWeightsVec;
 			for (int i = 0; i < NG; i++) { guideWeightsVec[i] = guideWeights[i]; }
 
-			Vec<(D + 1) * 5, float> phiVec;
-			for (int i = 0; i < (D + 1) * 5; i++) { phiVec[i] = phi[i]; }
-
 			const int numGpuThreadsPerBlock = 16;
 
 			if (numPatchMatchItersPerLevel[level] > 0)
@@ -660,8 +628,7 @@ void runEbsynth(int    ebsynthBackend,
 							pyramid[level].targetGuide,
 							pyramid[level].sourceGuide,
 							styleWeightsVec,
-							guideWeightsVec,
-							phiVec),
+							guideWeightsVec),
 						uniformityWeight,
 						numPatchMatchItersPerLevel[level],
 						numGpuThreadsPerBlock,
@@ -700,8 +667,7 @@ void runEbsynth(int    ebsynthBackend,
 							pyramid[level].targetGuide,
 							pyramid[level].sourceGuide,
 							styleWeightsVec,
-							guideWeightsVec,
-							phiVec),
+							guideWeightsVec),
 						pyramid[level].NNF,
 						pyramid[level].E);
 				}
@@ -794,12 +760,11 @@ EBSYNTH_API void ebsynthRun(int    ebsynthBackend,
 	int*   numSearchVoteItersPerLevel,
 	int*   numPatchMatchItersPerLevel,
 	int*   stopThresholdPerLevel,
-	float* phi,
-	int	   phiDegree,
+	int	   degree,
 	void*  outputData
 	)
 {
-	void(*const dispatchEbsynth[EBSYNTH_MAX_GUIDE_CHANNELS])(int, int, int, int, int, void*, void*, int, int, void*, void*, float*, float*, float, int, int, int, int*, int*, int*, float*, void*) =
+	void(*const dispatchEbsynth[EBSYNTH_MAX_GUIDE_CHANNELS])(int, int, int, int, int, void*, void*, int, int, void*, void*, float*, float*, float, int, int, int, int*, int*, int*, void*) =
 	{
 		runEbsynth<EBSYNTH_NUM_STYLE_CHANNELS,1,EBSYNTH_PHI_DEGREE>,
 		runEbsynth<EBSYNTH_NUM_STYLE_CHANNELS,2,EBSYNTH_PHI_DEGREE>,
@@ -831,7 +796,7 @@ EBSYNTH_API void ebsynthRun(int    ebsynthBackend,
 	if (numGuideChannels < 1) { printf("ebsynth.dll error: expecting at least one guide channel!\n"); return; }
 	if (numGuideChannels > EBSYNTH_MAX_GUIDE_CHANNELS) { printf("ebsynth.dll error: too many guide channels!\n"); return; }
 
-	if (phiDegree != EBSYNTH_PHI_DEGREE) { printf("Invalid phi degree!\n"); return; }
+	if (degree != EBSYNTH_PHI_DEGREE) { printf("Invalid phi degree!\n"); return; }
 
 	if (numGuideChannels >= 1 && numGuideChannels <= EBSYNTH_MAX_GUIDE_CHANNELS)
 	{
@@ -855,7 +820,6 @@ EBSYNTH_API void ebsynthRun(int    ebsynthBackend,
 			numSearchVoteItersPerLevel,
 			numPatchMatchItersPerLevel,
 			stopThresholdPerLevel,
-			phi,
 			outputData);
 	}
 }

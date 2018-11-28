@@ -11,7 +11,7 @@
 #include "Polynom.h"
 
 struct Parameter {
-  static const int DEGREE = 6;
+  static const int DEGREE = EBSYNTH_PHI_DEGREE;
   virtual cv::Mat eval(float t) = 0;
   virtual cv::Mat evalStatic(float t) = 0;
   virtual void resize(int width, int height, int type) = 0;
@@ -49,7 +49,7 @@ struct PolyParameter : public Parameter {
   cv::Mat coefs[DEGREE + 1];
 
   cv::Mat eval(float t) {
-    cv::Mat res(coefs[0].size(), coefs[0].type(), cv::Scalar(t));
+    cv::Mat res(coefs[0].size(), coefs[0].type(), cv::Scalar(0.0f));
     for (int i = DEGREE; i >= 0; --i)
       res = res.mul(t) + coefs[i];
     return res;
@@ -125,6 +125,7 @@ public:
       imgKs = imgKs / (4.0f * dotNL * dotEN);
       imgSigma = getSigma(t);
       imgSigma = cv::max(imgSigma, 0.0f);
+      imgSigma = cv::min(imgSigma, 1.0e+5f);
       imgSigma = -imgSigma * aDotHN * aDotHN;
       cv::exp(imgSigma, imgSigma);
       for (int c = 0; c < 3; ++c) {
@@ -162,6 +163,10 @@ public:
 
   cv::Mat getSigmaStatic(float t) {
     return sigma.evalStatic(t);
+  }
+
+  int type(void) {
+    return Kd[0].type();
   }
 
 };

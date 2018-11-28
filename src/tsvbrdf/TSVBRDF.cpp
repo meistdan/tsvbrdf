@@ -23,7 +23,6 @@ void TSVBRDF<STAFParameter>::load(const std::string & filepath) {
   // Ks.
   for (int i = 0; i < 4; ++i) {
     img = cv::imread(filepath + "/Ks-" + factorChars[i] + ".exr", CV_LOAD_IMAGE_UNCHANGED);
-    cv::extractChannel(img, Ks.factors[i], 0);
   }
 
   // Sigma.
@@ -79,22 +78,13 @@ void TSVBRDF<STAFParameter>::save(const std::string & filepath) {
   const char factorChars[] = { 'A', 'B', 'C', 'D' };
   for (int i = 0; i < 4; ++i) {
     std::vector<cv::Mat> KdChannels;
-    std::vector<cv::Mat> KsChannels;
-    std::vector<cv::Mat> sigmaChannels;
-    for (int c = 0; c < 3; ++c) {
+    for (int c = 0; c < 3; ++c)
       KdChannels.push_back(Kd[c].factors[i]);
-      KsChannels.push_back(Ks.factors[i]);
-      sigmaChannels.push_back(sigma.factors[i]);
-    }
     cv::Mat Kds;
-    cv::Mat Kss;
-    cv::Mat sigmas;
     cv::merge(KdChannels, Kds);
-    cv::merge(KsChannels, Kss);
-    cv::merge(sigmaChannels, sigmas);
     imwrite(filepath + "/Kd-" + factorChars[i] + ".exr", Kds);
-    imwrite(filepath + "/Ks-" + factorChars[i] + ".exr", Kss);
-    imwrite(filepath + "/Sigma-" + factorChars[i] + ".exr", sigmas);
+    imwrite(filepath + "/Ks-" + factorChars[i] + ".exr", Ks.factors[i]);
+    imwrite(filepath + "/Sigma-" + factorChars[i] + ".exr", sigma.factors[i]);
   }
   std::ofstream out(filepath + "/phi.txt");
   for (int c = 0; c < 3; ++c) {
@@ -142,23 +132,14 @@ void TSVBRDF<PolyParameter>::load(const std::string & filepath) {
 }
 
 void TSVBRDF<PolyParameter>::save(const std::string & filepath) {
-  for (int i = 0; i < Parameter::DEGREE; ++i) {
+  for (int i = 0; i <= Parameter::DEGREE; ++i) {
     std::vector<cv::Mat> KdChannels;
-    std::vector<cv::Mat> KsChannels;
-    std::vector<cv::Mat> sigmaChannels;
-    for (int c = 0; c < 3; ++c) {
+    for (int c = 0; c < 3; ++c)
       KdChannels.push_back(Kd[c].coefs[i]);
-      KsChannels.push_back(Ks.coefs[i]);
-      sigmaChannels.push_back(sigma.coefs[i]);
-    }
     cv::Mat Kds;
-    cv::Mat Kss;
-    cv::Mat sigmas;
     cv::merge(KdChannels, Kds);
-    cv::merge(KsChannels, Kss);
-    cv::merge(sigmaChannels, sigmas);
     imwrite(filepath + "/Kd-" + std::to_string(i) + ".exr", Kds);
-    imwrite(filepath + "/Ks-" + std::to_string(i) + ".exr", Kss);
-    imwrite(filepath + "/Sigma-" + std::to_string(i) + ".exr", sigmas);
+    imwrite(filepath + "/Ks-" + std::to_string(i) + ".exr", Ks.coefs[i]);
+    imwrite(filepath + "/Sigma-" + std::to_string(i) + ".exr", sigma.coefs[i]);
   }
 }

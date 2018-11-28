@@ -19,9 +19,9 @@ extern "C" {
 
 #define EBSYNTH_BACKEND_CUDA        0x0002
 
-#define EBSYNTH_NUM_STYLE_CHANNELS  25
-#define EBSYNTH_MAX_GUIDE_CHANNELS  24
 #define EBSYNTH_PHI_DEGREE 6
+#define EBSYNTH_NUM_STYLE_CHANNELS  (5 * (EBSYNTH_PHI_DEGREE + 1))
+#define EBSYNTH_MAX_GUIDE_CHANNELS  24
 
 #define EBSYNTH_VOTEMODE_PLAIN      0x0001         // weight = 1
 #define EBSYNTH_VOTEMODE_WEIGHTED   0x0002         // weight = 1/(1+error)
@@ -62,9 +62,7 @@ extern "C" {
 
 		int*   stopThresholdPerLevel,      // stop improving pixel when its change since last iteration falls under this threshold
 
-		float* phi,				   // source phi polynomial of staf model
-
-		int	   phiDegree,			   // degree of source phi polynomial
+		int	   degree,			               // polynomial degree
 
 		void*  outputData                  // (width * height * numStyleChannels) bytes, scan-line order
 		);

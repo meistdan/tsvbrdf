@@ -27,16 +27,13 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
   std::vector<float> sourceGuides(numGuideChannels * sn);
 
   // Source style channels.
-  int numStyleChannels = 7 * (Parameter::DEGREE + 1) + 7;
+  int numStyleChannels = 7 * (Parameter::DEGREE + 1);
   std::vector<cv::Mat> sourceChannels;
   for (int c = 0; c < 3; ++c)
     for (int i = 0; i <= Parameter::DEGREE; ++i) sourceChannels.push_back(source.diffuse[c].coefs[i]);
   for (int c = 0; c < 3; ++c)
     for (int i = 0; i <= Parameter::DEGREE; ++i) sourceChannels.push_back(source.specular[c].coefs[i]);
   for (int i = 0; i <= Parameter::DEGREE; ++i) sourceChannels.push_back(source.roughness.coefs[i]);
-  for (int c = 0; c < 3; ++c) sourceChannels.push_back(source.getDiffuse(0.0f, c));
-  for (int c = 0; c < 3; ++c) sourceChannels.push_back(source.getSpecular(0.0f, c));
-  sourceChannels.push_back(source.getRoughness(0.0f));
   cv::Mat sourceStyles;
   cv::merge(sourceChannels, sourceStyles);
 
@@ -56,8 +53,6 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
   std::vector<float> styleWeights(numStyleChannels);
   for (int i = 0; i < 7 * (Parameter::DEGREE + 1); ++i) 
     styleWeights[i] = 1.0f;
-  for (int i = 7 * (Parameter::DEGREE + 1); i < 7 * (Parameter::DEGREE + 1) + 7; ++i) 
-    styleWeights[i] = 0.0f;
 
   // Guide weights.
   std::vector<float> guideWeights(numGuideChannels);
@@ -127,7 +122,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
   PolyTSVBRDF source(srcFilepath);
 
   // Source style channels.
-  int numStyleChannels = 5 * (Parameter::DEGREE + 1);
+  int numStyleChannels = 7 * (Parameter::DEGREE + 1);
   std::vector<cv::Mat> sourceChannels;
   for (int c = 0; c < 3; ++c)
     for (int i = 0; i <= Parameter::DEGREE; ++i) sourceChannels.push_back(source.diffuse[c].coefs[i]);
@@ -165,18 +160,18 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
   targetGuides.convertTo(targetGuides, CV_32F, 1.0f / 255.0f);
 
   // Style weights.
-  const float totalStyleWeight = 2.0f;
+  const float totalStyleWeight = 5.0f;
   std::vector<float> styleWeights(numStyleChannels);
-  for (int i = 0; i < 7 * (Parameter::DEGREE + 1); ++i) {
-    if (i < 6 * (Parameter::DEGREE + 1)) styleWeights[i] = totalStyleWeight / numStyleChannels;
-    else styleWeights[i] = 0.0f;
-  }
+  for (int i = 0; i < numStyleChannels; ++i)
+    //styleWeights[i] = totalStyleWeight / numStyleChannels;
+    styleWeights[i] = 1.0f;
 
   // Guide weights.
   const float totalGuideWeight = 1.0f;
   std::vector<float> guideWeights(numGuideChannels);
   for (int i = 0; i < numGuideChannels; i++)
-    guideWeights[i] = totalGuideWeight / numGuideChannels;
+    //guideWeights[i] = totalGuideWeight / numGuideChannels;
+    guideWeights[i] = 1.0f;
 
   // Pyramid levels.
   int patchSize = 5;
@@ -229,20 +224,18 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
   for (int i = 0; i <= Parameter::DEGREE; ++i) reconstructChannels.push_back(reconstruct.roughness.coefs[i]);
   cv::split(targetStyles, reconstructChannels);
 
-  // Export.
-  reconstruct.exportFrames(outFilepath + "/temporal/images");
-  reconstruct.save(outFilepath + "/temporal/staf");
-
+#if 0
   // Correction.
   for (int c = 0; c < 3; ++c) {
     cv::Mat recKd = reconstruct.getDiffuse(t0, c);
     for (int i = 0; i <= Parameter::DEGREE; ++i)
       reconstruct.diffuse[c].coefs[i] = (targetKd[c].mul(1.0f / recKd)).mul(reconstruct.diffuse[c].coefs[i]);
   }
+#endif
 
   // Export.
-  reconstruct.exportFrames(outFilepath + "/transfer/images");
-  reconstruct.save(outFilepath + "/transfer/staf");
+  reconstruct.exportFrames(outFilepath + "/images");
+  reconstruct.save(outFilepath);
 
 }
 

@@ -290,7 +290,7 @@ struct PatchSSD_Split
           }
 #else
           Vec<D + 1, float> p;
-          for (int i = 0; i < 7 * (D + 1); i += D + 1)
+          for (int i = 0; i < NS; i += D + 1)
           {
             // subtract
             for (int j = 0; j <= D; ++j)
@@ -312,11 +312,6 @@ struct PatchSSD_Split
               }
               error += styleWeights[i] * val;
             }
-          }
-          for (int i = 7 * (D + 1); i < NS; i++)
-          {
-            const float diff = float(pixTs[i]) - float(pixSs[i]);
-            error += styleWeights[i] * diff*diff;
           }
 #endif
         }

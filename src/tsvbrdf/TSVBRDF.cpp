@@ -23,7 +23,7 @@ void TSVBRDF<PolyParameter>::load(const std::string & filepath) {
   for (int i = 0; i <= Parameter::DEGREE; ++i) {
     img = cv::imread(filepath + "/Specular-" + std::to_string(i) + ".exr", CV_LOAD_IMAGE_UNCHANGED);
     for (int c = 0; c < 3; ++c)
-      cv::extractChannel(img, specular[c].coefs[i], 0);
+      cv::extractChannel(img, specular[c].coefs[i], c);
   }
 
   // Roughness.

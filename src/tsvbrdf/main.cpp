@@ -16,6 +16,11 @@ int idealNumPyramidLevels(int sourceWidth, int sourceHeight, int targetWidth, in
   return numLevels;
 }
 
+void exportFrames(const std::string & outFilepath) {
+  PolyTSVBRDF source(outFilepath);
+  source.exportFrames(outFilepath + "/images");
+}
+
 void spatialPrediction(const std::string & srcFilepath, const std::string & outFilepath) {
 
   // Source.
@@ -264,7 +269,10 @@ std::string type2str(int type) {
 
 int main(int argc, char** argv) {
 
-  if (argc == 3) {
+  if (argc == 2) {
+    exportFrames(argv[1]);
+  } 
+  else if (argc == 3) {
     spatialPrediction(argv[1], argv[2]);
   }
 

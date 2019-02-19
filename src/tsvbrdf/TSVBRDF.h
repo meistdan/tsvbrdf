@@ -13,7 +13,6 @@
 struct Parameter {
   static const int DEGREE = EBSYNTH_PHI_DEGREE;
   virtual cv::Mat eval(float t) = 0;
-  virtual cv::Mat evalStatic(float t) = 0;
   virtual void resize(int width, int height, int type) = 0;
   virtual int type(void) = 0;
 };
@@ -27,10 +26,6 @@ struct PolyParameter : public Parameter {
     for (int i = DEGREE; i >= 0; --i)
       res = res.mul(t) + coefs[i];
     return res;
-  }
-
-  cv::Mat evalStatic(float t) {
-    return eval(t);
   }
 
   void resize(int width, int height, int type) {
@@ -82,36 +77,35 @@ public:
     cv::Mat imgDiff(height, width, diffuse[0].type());
     cv::Mat imgSpec(height, width, specular[0].type());
     cv::Mat imgRoughness(height, width, roughness.type());
-    cv::Mat imgAlpha2(height, width, roughness.type());
+    cv::Mat imgSmoothness(height, width, roughness.type());
     cv::Mat imgD(height, width, roughness.type());
     cv::Mat N = (cv::Mat_<float>(3, 1) << 0.0f, 1.0f, 0.0f);
     cv::Mat E = N;
-    //cv::Mat L = (cv::Mat_<float>(3, 1) << 0.0f, 1.0f, 0.0f);
     cv::Mat L = (cv::Mat_<float>(3, 1) << 0.0f, 1.0f, 1.0f);
     L = L / cv::norm(L);
     cv::Mat H = (L + E) * 0.5f;
     H = H / cv::norm(H);
     float dotNL = float(N.dot(L));
     float dotHN = float(N.dot(H));
-    float dotHN2 = dotHN * dotHN;
+    float NH2 = acos(dotHN) * acos(dotHN);
     int f = 0;
-    for (float t = 0.0f; t <= 1.0f; t += frameRate) {
+    for (float t = 0.0f; t <= 1.0f + 1.0e-3f; t += frameRate) {
       imgRoughness = getRoughness(t);
       imgRoughness = cv::max(imgRoughness, 0.0f);
-      imgRoughness = cv::min(imgRoughness, 1000.0f);
-      imgAlpha2 = imgRoughness.mul(imgRoughness);
-      imgAlpha2 = imgAlpha2.mul(imgAlpha2);
-      imgD = (imgAlpha2 - 1.0f) * dotHN2 + 1.0f;
-      imgD = M_PI * imgD.mul(imgD);
-      imgD = imgAlpha2.mul(1.0f / imgD);
+      imgRoughness = cv::min(imgRoughness, 1.0f);
+      imgSmoothness = 1.0f - imgRoughness;
+      imgD = -NH2 / imgSmoothness.mul(imgSmoothness);
+      cv::exp(imgD, imgD);
       for (int c = 0; c < 3; ++c) {
         imgDiff = getDiffuse(t, c);
         imgDiff = cv::max(imgDiff, 0.0f);
         imgSpec = getSpecular(t, c);
         imgSpec = cv::max(imgSpec, 0.0f);
         imgs[c] = (imgDiff + imgSpec.mul(imgD)) * dotNL;
+        pow(imgs[c], 0.5f, imgs[c]);
       }
       cv::merge(imgs, img);
+      //cv::resize(img, img, cv::Size(512,512));
       imwrite(filepath + "/" + std::to_string(f++) + ".jpg", img * 255.0f);
     }
   }

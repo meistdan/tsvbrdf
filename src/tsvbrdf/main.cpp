@@ -1,4 +1,5 @@
 #include "TSVBRDF.h"
+#include <chrono>
 
 int pyramidLevelSize(int sizeBase, int level) {
   return int(float(sizeBase) * pow(2.0f, -float(level)));
@@ -43,7 +44,7 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
   cv::merge(sourceChannels, sourceStyles);
 
   // Target resolution.
-  const int SIZE_MULT = 4;
+  const int SIZE_MULT = 2;
   int targetWidth = SIZE_MULT * source.width;
   int targetHeight = SIZE_MULT * source.height;
 
@@ -56,8 +57,13 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
 
   // Style weights.
   std::vector<float> styleWeights(numStyleChannels);
-  for (int i = 0; i < 7 * (Parameter::DEGREE + 1); ++i) 
-    styleWeights[i] = 1.0f;
+  for (int i = 0; i < 7 * (Parameter::DEGREE + 1); ++i)
+      if (i < 3 * (Parameter::DEGREE + 1))
+          styleWeights[i] = 0.0f;
+      else if (i < 6 * (Parameter::DEGREE + 1))
+          styleWeights[i] = 1.0f / 3.0f;
+      else
+          styleWeights[i] = 0.0f;
 
   // Guide weights.
   std::vector<float> guideWeights(numGuideChannels);
@@ -77,6 +83,7 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
   }
 
   // EBSynth.
+  auto t1 = std::chrono::high_resolution_clock::now();
   ebsynthRun(
     EBSYNTH_BACKEND_CUDA,
     numStyleChannels,
@@ -101,6 +108,9 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
     Parameter::DEGREE,
     targetStyles.data
   );
+  auto t2 = std::chrono::high_resolution_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
+  std::cout << "Synthesis done in " << time << "s" << std::endl;
 
   // Output.
   PolyTSVBRDF target(targetWidth, targetHeight, source.type());
@@ -146,7 +156,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
 
   // Target.
   cv::Mat target = cv::imread(tgtFilename, CV_LOAD_IMAGE_UNCHANGED);
-  //cv::resize(target, target, cv::Size(300,300));
+  //cv::resize(target, target, cv::Size(220, 220));
   cv::Mat targetKd[3];
   for (int c = 0; c < 3; ++c) {
     cv::extractChannel(target, targetKd[c], c);
@@ -165,7 +175,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
   targetGuides.convertTo(targetGuides, CV_32F, 1.0f / 255.0f);
 
   // Style weights.
-  const float totalStyleWeight = 5.0f;
+  const float totalStyleWeight = 1.0f;
   std::vector<float> styleWeights(numStyleChannels);
   for (int i = 0; i < numStyleChannels; ++i)
     //styleWeights[i] = totalStyleWeight / numStyleChannels;
@@ -191,6 +201,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
   }
 
   // EBSynth.
+  auto t1 = std::chrono::high_resolution_clock::now();
   ebsynthRun(
     EBSYNTH_BACKEND_CUDA,
     numStyleChannels,
@@ -215,6 +226,9 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
     Parameter::DEGREE,
     targetStyles.data
   );
+  auto t2 = std::chrono::high_resolution_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
+  std::cout << "Synthesis done in " << time << "s" << std::endl;
 
   // Output.
   PolyTSVBRDF reconstruct;
@@ -241,6 +255,36 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
   // Export.
   reconstruct.exportFrames(outFilepath + "/images");
   reconstruct.save(outFilepath);
+
+}
+
+void temporalPredictionRef(const std::string & srcFilepath, const std::string & tgtFilename, const std::string & outFilepath, float t0 = 0.0f) {
+
+    // Source.
+    PolyTSVBRDF source(srcFilepath);
+    PolyTSVBRDF reconstruct(srcFilepath);
+
+    // Target.
+    cv::Mat target = cv::imread(tgtFilename, CV_LOAD_IMAGE_UNCHANGED);
+    cv::resize(target, target, cv::Size(220, 220));
+    cv::Mat targetKd[3];
+    for (int c = 0; c < 3; ++c) {
+        cv::extractChannel(target, targetKd[c], c);
+        targetKd[c].convertTo(targetKd[c], CV_32F, 1.0f / 255.0f);
+    }
+    int targetHeight = target.size[0];
+    int targetWidth = target.size[1];
+
+    // Correction.
+    for (int c = 0; c < 3; ++c) {
+        cv::Mat recKd = reconstruct.getDiffuse(t0, c);
+        for (int i = 0; i <= Parameter::DEGREE; ++i)
+            reconstruct.diffuse[c].coefs[i] = (targetKd[c].mul(1.0f / recKd)).mul(reconstruct.diffuse[c].coefs[i]);
+    }
+
+    // Export.
+    reconstruct.exportFrames(outFilepath + "/images");
+    reconstruct.save(outFilepath);
 
 }
 

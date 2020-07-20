@@ -102,11 +102,13 @@ public:
         imgSpec = getSpecular(t, c);
         imgSpec = cv::max(imgSpec, 0.0f);
         imgs[c] = (imgDiff + imgSpec.mul(imgD)) * dotNL;
+        imgs[c] = imgDiff;
         pow(imgs[c], 0.5f, imgs[c]);
       }
       cv::merge(imgs, img);
+	  img = 255.0f * img;
       //cv::resize(img, img, cv::Size(512,512));
-      imwrite(filepath + "/" + std::to_string(f++) + ".jpg", img * 255.0f);
+      imwrite(filepath + "/" + std::to_string(f++) + ".jpg", img);
     }
   }
 

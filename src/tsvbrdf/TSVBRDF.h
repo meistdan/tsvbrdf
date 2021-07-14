@@ -106,7 +106,7 @@ public:
         pow(imgs[c], 0.5f, imgs[c]);
       }
       cv::merge(imgs, img);
-	  img = 255.0f * img;
+	    img = 255.0f * img;
       //cv::resize(img, img, cv::Size(512,512));
       imwrite(filepath + "/" + std::to_string(f++) + ".jpg", img);
     }

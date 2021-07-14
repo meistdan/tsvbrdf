@@ -1,6 +1,8 @@
 #include "TSVBRDF.h"
 #include <chrono>
 
+#define CORRECTION 0
+
 int pyramidLevelSize(int sizeBase, int level) {
   return int(float(sizeBase) * pow(2.0f, -float(level)));
 }
@@ -18,8 +20,31 @@ int idealNumPyramidLevels(int sourceWidth, int sourceHeight, int targetWidth, in
 }
 
 void exportFrames(const std::string & outFilepath) {
+#if 1
   PolyTSVBRDF source(outFilepath);
   source.exportFrames(outFilepath + "/images");
+#else 
+  const int FRAMES = 51;
+  std::vector<cv::Mat> data;
+  cv::Mat img;
+  for (int i = 0; i < FRAMES; ++i) {
+      img = cv::imread(outFilepath + "/Diffuse-" + std::to_string(i) + ".exr", CV_LOAD_IMAGE_UNCHANGED);
+      data.push_back(img);
+  }
+  const int OUT_FRAMES = 21;
+  for (int i = 0; i < OUT_FRAMES; ++i) {
+      float t = float(i) / (OUT_FRAMES - 1);
+      float j = t * (FRAMES - 1);
+      int j0 = int(j);
+      int j1 = std::ceil(j);
+      float alpha = j - j0;
+      if (j0 == j1) img = data[j0];
+      else img = (1.0 - alpha) * data[j0] + alpha * data[j1];
+      pow(img, 0.5f, img);
+      img = 255.0f * img;
+      imwrite(outFilepath + "/images/" + std::to_string(i) + ".jpg", img);
+  }
+#endif
 }
 
 void spatialPrediction(const std::string & srcFilepath, const std::string & outFilepath) {
@@ -59,9 +84,9 @@ void spatialPrediction(const std::string & srcFilepath, const std::string & outF
   std::vector<float> styleWeights(numStyleChannels);
   for (int i = 0; i < 7 * (Parameter::DEGREE + 1); ++i)
       if (i < 3 * (Parameter::DEGREE + 1))
-          styleWeights[i] = 0.0f;
+          styleWeights[i] = 1.0f;
       else if (i < 6 * (Parameter::DEGREE + 1))
-          styleWeights[i] = 1.0f / 3.0f;
+          styleWeights[i] = 1.0f;
       else
           styleWeights[i] = 0.0f;
 
@@ -243,7 +268,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
   for (int i = 0; i <= Parameter::DEGREE; ++i) reconstructChannels.push_back(reconstruct.roughness.coefs[i]);
   cv::split(targetStyles, reconstructChannels);
 
-#if 0
+#if CORRECTION
   // Correction.
   for (int c = 0; c < 3; ++c) {
     cv::Mat recKd = reconstruct.getDiffuse(t0, c);
@@ -319,7 +344,6 @@ int main(int argc, char** argv) {
   else if (argc == 3) {
     spatialPrediction(argv[1], argv[2]);
   }
-
   else if (argc == 5) {
     temporalPrediction(argv[1], argv[2], argv[3], std::stof(argv[4]));
   }

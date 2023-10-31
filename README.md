@@ -1,5 +1,5 @@
 # Spatio-Temporal BRDFs
-Sources codes of the <a href="https://www.sciencedirect.com/science/article/abs/pii/S0097849321000431">Spatio-Temporal BRDFs</a> project. 
+Source codes of the <a href="https://www.sciencedirect.com/science/article/abs/pii/S0097849321000431">Spatio-Temporal BRDFs</a> project. 
 We used a modified version of <a href="https://github.com/jamriska/ebsynth">Ebsynth</a> for the synthesis.
 We released also <a href="https://github.com/meistdan/mitsuba-tsvbrdf">a BSDF plugin</a> for the Mitsuba renderer in a separate repository.
 

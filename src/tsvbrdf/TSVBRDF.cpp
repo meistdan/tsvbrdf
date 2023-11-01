@@ -14,21 +14,21 @@ void TSVBRDF<PolyParameter>::load(const std::string & filepath) {
 
   // Diffuse.
   for (int i = 0; i <= Parameter::DEGREE; ++i) {
-    img = cv::imread(filepath + "/Diffuse-" + std::to_string(i) + ".exr", CV_LOAD_IMAGE_UNCHANGED);
+    img = cv::imread(filepath + "/Diffuse-" + std::to_string(i) + ".exr", cv::IMREAD_UNCHANGED);
     for (int c = 0; c < 3; ++c)
       cv::extractChannel(img, diffuse[c].coefs[i], c);
   }
 
   // Specular.
   for (int i = 0; i <= Parameter::DEGREE; ++i) {
-    img = cv::imread(filepath + "/Specular-" + std::to_string(i) + ".exr", CV_LOAD_IMAGE_UNCHANGED);
+    img = cv::imread(filepath + "/Specular-" + std::to_string(i) + ".exr", cv::IMREAD_UNCHANGED);
     for (int c = 0; c < 3; ++c)
       cv::extractChannel(img, specular[c].coefs[i], c);
   }
 
   // Roughness.
   for (int i = 0; i <= Parameter::DEGREE; ++i) {
-    img = cv::imread(filepath + "/Roughness-" + std::to_string(i) + ".exr", CV_LOAD_IMAGE_UNCHANGED);
+    img = cv::imread(filepath + "/Roughness-" + std::to_string(i) + ".exr", cv::IMREAD_UNCHANGED);
     cv::extractChannel(img, roughness.coefs[i], 0);
   }
 

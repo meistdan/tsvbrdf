@@ -180,7 +180,7 @@ void temporalPrediction(const std::string & srcFilepath, const std::string & tgt
   sourceGuides.convertTo(sourceGuides, CV_32F, 1.0f / 255.0f);
 
   // Target.
-  cv::Mat target = cv::imread(tgtFilename, CV_LOAD_IMAGE_UNCHANGED);
+  cv::Mat target = cv::imread(tgtFilename, cv::IMREAD_UNCHANGED);
   //cv::resize(target, target, cv::Size(220, 220));
   cv::Mat targetKd[3];
   for (int c = 0; c < 3; ++c) {
@@ -290,7 +290,7 @@ void temporalPredictionRef(const std::string & srcFilepath, const std::string & 
     PolyTSVBRDF reconstruct(srcFilepath);
 
     // Target.
-    cv::Mat target = cv::imread(tgtFilename, CV_LOAD_IMAGE_UNCHANGED);
+    cv::Mat target = cv::imread(tgtFilename, cv::IMREAD_UNCHANGED);
     cv::resize(target, target, cv::Size(220, 220));
     cv::Mat targetKd[3];
     for (int c = 0; c < 3; ++c) {
